@@ -194,8 +194,9 @@ models, synthetic-data tests, the accuracy scoreboard.
 
 - The Submission must be original work that you own and that infringes no one's IP or privacy.
   Contracted technical help is allowed if you own the result; open source is allowed if its licences
-  are followed. No rule requires work to start during the event, but all code starts Oct 26 anyway;
-  before then this repo holds only this design doc.
+  are followed. No rule requires work to start during the event. Before Oct 26 the repo holds only
+  the design doc and the Plan 1 implementation plan (which includes code drafts); the package itself
+  is built from Oct 26.
 - You keep ownership. Meta and Cerebral Valley get a perpetual, royalty-free, non-exclusive licence to
   the Submission, and anything shared during the event is not confidential.
 - Example and demo clips: objects and adult hands only, no faces, no minors, no music, so there are no
