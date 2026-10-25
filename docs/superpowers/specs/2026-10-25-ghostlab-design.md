@@ -3,8 +3,13 @@
 - Date: 2026-10-25
 - Event: Meta Global AI Developer Hackathon, Indie developer track, solo
 - Window: build Oct 26 to Nov 4, 9:00 PM ET (= Thu Nov 5, 1:00 PM AEDT; US DST ends Nov 1)
-- Judged on: "creativity, technical ambition, and whether it works"
-- Theme: 2, "Push the Frontier" (science education)
+- Judged on (Official Rules): Impact 30%, Use of Meta AI Tooling 25%, Technical Depth & Execution 20%,
+  Demo 25% (working live, holds up, video quality)
+- Indie prizes: $150k / $100k / $75k / $50k / $25k, plus bonus prizes up to $50k total (community vote,
+  most viral, others) announced about Nov 10
+- Credits: $150 Meta Model API credits, valid for the 10-day development window only
+- Theme: 2, "Push the Frontier" (SAM 3.1 as a scientific measuring instrument), applied to physics
+  education for impact. Re-check against the problem statements published at kickoff.
 
 ## One line
 
@@ -109,6 +114,43 @@ Rule: no number is ever shown without its error bar and fit quality.
    scoreboard published in the app and README ("measured g within X% across N clips").
 3. **Daily live check**: one real upload to the deployed site.
 
+## Scoring against the judging weights
+
+**Impact (30%)**
+- Pitch: a phone replaces a few hundred dollars of lab sensors (photogates, motion detectors), so any
+  school can run real kinematics labs.
+- Printable lab worksheet export: the student's prediction, data table, fitted values with errors,
+  graph, and the class question. A teacher can use it in a lesson the next day.
+- A real teacher's verdict on camera (odds improver 6).
+
+**Use of Meta AI Tooling (25%): go beyond "SAM tracks a ball"**
+- SAM 3.1 as a measuring instrument, not just a tracker:
+  - pendulum: segment the string itself to get pivot and length, so nothing is typed in;
+  - ramp: segment the ramp surface to get the slope angle;
+  - bounce: mask shape change (squash) at impact gives contact time.
+- Muse Spark vision: object identity and real size (the scale), pivot location, motion type, and the
+  check "does this fit match what you see in the frames?"
+- Muse Image (stretch, Nov 2 only if ahead): repaint the share clip's background as the Moon or Mars
+  while the ghost moves under that gravity. Built for the most-viral bonus.
+- Write-up section "What we found SAM 3.1 can measure": accuracy per quantity from the scoreboard.
+  This is the "surfaced unexpected capabilities" the criterion asks for.
+- Use Muse Code for part of the build and say so.
+
+**Technical Depth & Execution (20%)**: error bars on every number, the cross-check between motion
+models, synthetic-data tests, the accuracy scoreboard.
+
+**Demo (25%)**: ghost replay, example gallery that cannot fail, live upload, a 2:00 video.
+
+## Credits and the judging window
+
+- $150 must cover development and judges' live uploads. On Oct 26, measure the cost of one clip.
+  Budget: about $60 development, $60 judge traffic, $30 reserve.
+- Every API response is cached by input hash; development re-runs cost nothing.
+- Public uploads: clips capped at 15 s and 720p, per-visitor daily cap.
+- **Risk: credits expire after the 10-day window, but judging runs Nov 4-8.** Live upload during
+  judging needs one of: paid billing on the Meta Model API account, or open-weights SAM on Modal
+  (partner credits). The example gallery works with no API at all. Settle this by Oct 31.
+
 ## Odds improvers (all in scope)
 
 1. Ghost replay inside the real video: the first 10 s of the demo.
@@ -118,7 +160,9 @@ Rule: no number is ever shown without its error bar and fit quality.
 5. Demo that can't fail: 6 example clips with saved results, alongside live upload.
 6. One real physics teacher trying it, with a short quote on camera.
 7. Attend workshops; ask one specific question in office hours or Discord.
-8. Stay quiet until about Nov 2, then post a short ghost clip.
+8. Post a short ghost clip from about Oct 31 (once the ghost looks good), then progress clips daily.
+   The rules give no confidentiality anyway, and community-vote and most-viral bonus prizes reward
+   reach built before judging.
 9. Write the demo video script on day 3 and build toward its shots.
 10. Clean public repo: one-command run, passing tests, README with the accuracy table; credit Muse Code
     if used.
@@ -140,17 +184,28 @@ Rule: no number is ever shown without its error bar and fit quality.
 | Oct 28 | Scale and identify working; first scoreboard run; write the video script |
 | Oct 29 | Lab screen, ghost replay, sliders |
 | Oct 30 | Bounce and pendulum fits |
-| Oct 31 | Predict screen, graphs, explanation; deploy to the VPS |
-| Nov 1 | Ramp fit (cut if the first three are not solid); error handling |
-| Nov 2 | Feature freeze. Example gallery, mobile polish, teaser post |
-| Nov 3 | Teacher session, record the demo video, README with accuracy table |
+| Oct 31 | Predict screen, graphs, explanation; deploy to the VPS; settle judging-window credits; first teaser post |
+| Nov 1 | Ramp fit (cut if the first three are not solid); string and ramp segmentation; error handling |
+| Nov 2 | Feature freeze. Example gallery, worksheet export, mobile polish; Muse Image backdrop only if ahead |
+| Nov 3 | Teacher session, record the demo video, README with accuracy table and "what SAM 3.1 can measure" |
 | Nov 4 | Buffer; submit Wednesday evening AEDT (hard deadline Thu Nov 5, 1:00 PM AEDT) |
 
-## Open items to settle on Oct 26 (from the Official Rules, unpublished on Oct 25)
+## Rules that shape the build (Official Rules, read Oct 25)
 
-- Whether work must be created during the event. This repo holds only this design doc before Oct 26;
-  all code starts Oct 26.
-- IP and licence terms, repo visibility, submission format (video length, demo, write-up).
-- Whether non-Meta coding assistants are allowed.
-- Consent rules for filming people, especially minors (students): default to filming objects only,
-  with adult hands, and no faces in shared clips.
+- The Submission must be original work that you own and that infringes no one's IP or privacy.
+  Contracted technical help is allowed if you own the result; open source is allowed if its licences
+  are followed. No rule requires work to start during the event, but all code starts Oct 26 anyway;
+  before then this repo holds only this design doc.
+- You keep ownership. Meta and Cerebral Valley get a perpetual, royalty-free, non-exclusive licence to
+  the Submission, and anything shared during the event is not confidential.
+- Example and demo clips: objects and adult hands only, no faces, no minors, no music, so there are no
+  privacy or copyright claims.
+- Indie track allows teams of up to 4; this plan is solo.
+- Submit at https://cerebralvalley.ai/e/meta-ai-developer-hackathon/hackathon/submit
+
+## Open items to settle on Oct 26
+
+- The problem statements (Impact checks fit with one), and the submission form fields and video length.
+- What Glimmer and Muse Wonder do, and whether either beats Muse Spark for identify or explain.
+- SAM 3.1 API: video tracking or images only; speed; price per clip.
+- Whether credits or paid billing continue through judging (Nov 4-8).
