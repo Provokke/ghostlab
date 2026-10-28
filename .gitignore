@@ -4,3 +4,6 @@ work/
 __pycache__/
 .venv/
 result.json
+srv.log
+work/
+web/uploads/
