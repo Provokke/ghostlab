@@ -1,0 +1,6 @@
+.cache/
+work/
+*.egg-info/
+__pycache__/
+.venv/
+result.json

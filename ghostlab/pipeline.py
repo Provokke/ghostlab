@@ -1,0 +1,59 @@
+"""Clip in, result JSON out: ingest, identify, track, scale, fit, explain."""
+from __future__ import annotations
+
+import json
+from dataclasses import dataclass
+from pathlib import Path
+
+from ghostlab import explain, identify, ingest, meta_api, sam_parse, scale
+from ghostlab.cache import cached
+from ghostlab.core import FitError, FitResult
+from ghostlab.fit.select import better_alternative, fit_all
+
+
+@dataclass(frozen=True)
+class Overrides:
+    object: str | None = None
+    size_m: float | None = None
+    motion: str | None = None
+
+
+def run(src: Path, work: Path, c, overrides: Overrides = Overrides(), cache_root: Path | None = None) -> dict:
+    clip = ingest.prepare(src, work)
+    warnings = []
+    if clip.camera_shift > ingest.SHAKE_LIMIT:
+        warnings.append("The camera moved. Prop your phone against something and film again.")
+    ident = cached("identify", identify.PROMPT_VERSION.encode() + b"".join(clip.key_frames),
+                   lambda: identify.identify(c, clip.key_frames), cache_root)
+    if ident["size_confidence"] == "low" and overrides.size_m is None:
+        warnings.append(f"Not sure of the {ident['object']}'s size. Check it before trusting the numbers.")
+    prompt = overrides.object or ident["sam_prompt"]
+    size = overrides.size_m or ident["real_size_m"]
+    motion = overrides.motion or ident["motion"]
+    video = clip.path.read_bytes()
+    sam = cached("sam", prompt.encode() + b"\0" + video,
+                 lambda: {"text": meta_api.sam_track(c, meta_api.upload_video(c, clip.path), prompt)}, cache_root)
+    frames = sam_parse.parse(sam["text"])
+    pixels = sam_parse.to_pixel_track(frames, clip.n_frames, clip.fps, clip.width, clip.height)
+    try:
+        track, notes = scale.to_metres(pixels, size)
+    except FitError as exc:
+        return {"error": str(exc), "identification": ident, "warnings": warnings}
+    pivot = scale.pivot_to_metres(track, (ident["pivot_x_px"], ident["pivot_y_px"])) if ident["has_pivot"] else None
+    results = fit_all(track, pivot)
+    chosen = results[motion]
+    explanation = None
+    if isinstance(chosen, FitResult):
+        key = explain.PROMPT_VERSION + ident["object"] + json.dumps(chosen.to_json(), sort_keys=True)
+        explanation = cached("explain", key.encode(), lambda: explain.explain(c, ident["object"], chosen), cache_root)
+    return {
+        "clip": {"fps": clip.fps, "n_frames": clip.n_frames, "width": clip.width, "height": clip.height},
+        "identification": ident,
+        "track": track.to_json(),
+        "fits": {k: v.to_json() if isinstance(v, FitResult) else {"error": v} for k, v in results.items()},
+        "chosen": motion,
+        "better_alternative": better_alternative(motion, results),
+        "notes": notes,
+        "warnings": warnings,
+        "explanation": explanation,
+    }

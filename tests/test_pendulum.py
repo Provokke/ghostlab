@@ -1,0 +1,45 @@
+import numpy as np
+import pytest
+from scipy.integrate import solve_ivp
+
+from ghostlab.core import FitError
+from ghostlab.fit import pendulum, projectile
+from tests.synth import noisy
+
+
+def swing(L=0.8, g=9.81, theta0=0.25, gamma=0.05, seconds=6.0, fps=30, pivot=(0.0, 1.0)):
+    t = np.arange(0, seconds, 1 / fps)
+    rhs = lambda _t, s: [s[1], -(g / L) * np.sin(s[0]) - 2 * gamma * s[1]]
+    th = solve_ivp(rhs, (0, seconds), [theta0, 0.0], t_eval=t, rtol=1e-10, atol=1e-12).y[0]
+    return noisy(t, pivot[0] + L * np.sin(th), pivot[1] - L * np.cos(th))
+
+
+def test_small_swing_gives_honest_error_bars():
+    result = pendulum.fit(swing())
+    g, L = result.params["g"], result.params["length"]
+    assert abs(g.value - 9.81) < 3 * g.error
+    assert abs(L.value - 0.8) < 3 * L.error
+    assert abs(result.params["period"].value - 2 * np.pi * np.sqrt(0.8 / 9.81)) < 0.02
+
+
+def test_tiny_swing_without_pivot_is_rough():
+    assert pendulum.fit(swing(theta0=0.15)).quality == "rough"
+
+
+def test_big_swing_pins_length_and_uses_amplitude_correction():
+    result = pendulum.fit(swing(theta0=0.6))
+    assert abs(result.params["length"].value - 0.8) < 0.01
+    assert abs(result.params["g"].value - 9.81) < 0.15
+    assert result.quality == "good"
+
+
+def test_known_pivot_gives_the_same_answer():
+    result = pendulum.fit(swing(), pivot=(0.0, 1.0))
+    assert abs(result.params["g"].value - 9.81) < 0.1
+
+
+def test_projectile_arc_is_not_a_pendulum():
+    t = np.arange(0, 0.6, 1 / 30)
+    x, y = projectile.simulate({"x0": 0.0, "vx": 2.0, "y0": 0.0, "vy": 3.0, "g": 9.81}, t)
+    with pytest.raises(FitError):
+        pendulum.fit(noisy(t, x, y))
