@@ -45,6 +45,7 @@ def test_end_to_end_recovers_g(tmp_path):
     g = result["fits"]["projectile"]["params"]["g"]
     assert abs(g["value"] - 9.81) < 0.2
     assert result["better_alternative"] is None
+    assert result["twin"]["verdict"] == "certified"
     assert result["explanation"] == EXPLAIN
     assert [c[0] for c in fake.calls] == ["chat", "file", "sam", "chat"]
 

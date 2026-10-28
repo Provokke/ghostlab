@@ -5,7 +5,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from ghostlab import explain, identify, ingest, meta_api, sam_parse, scale
+from ghostlab import explain, heldout, identify, ingest, meta_api, sam_parse, scale
 from ghostlab.cache import cached
 from ghostlab.core import FitError, FitResult
 from ghostlab.fit.select import better_alternative, fit_all
@@ -53,6 +53,7 @@ def run(src: Path, work: Path, c, overrides: Overrides = Overrides(), cache_root
         "fits": {k: v.to_json() if isinstance(v, FitResult) else {"error": v} for k, v in results.items()},
         "chosen": motion,
         "better_alternative": better_alternative(motion, results),
+        "twin": heldout.check(track, motion, pivot),
         "notes": notes,
         "warnings": warnings,
         "explanation": explanation,
