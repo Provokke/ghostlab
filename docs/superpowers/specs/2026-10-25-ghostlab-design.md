@@ -8,8 +8,9 @@
 - Indie prizes: $150k / $100k / $75k / $50k / $25k, plus bonus prizes up to $50k total (community vote,
   most viral, others) announced about Nov 10
 - Credits: $150 Meta Model API credits, valid for the 10-day development window only
-- Theme: 2, "Push the Frontier" (SAM 3.1 as a scientific measuring instrument), applied to physics
-  education for impact. Re-check against the problem statements published at kickoff.
+- Theme: "Push the Frontier" (SAM 3.1 as a scientific measuring instrument). Reframed 2026-10-29: the pitch is
+  a phone-as-lab-instrument, not a physics-class tool, because the rules list education chatbots, simple image
+  analyzers and sports analyzers as anti-projects. Students and teachers are the first users, not the headline.
 
 ## One line
 
@@ -24,7 +25,11 @@ Ghostlab needs **no setup**: the AI identifies the object, its real size and the
 physics, and simulates it. Pitch line: "Tracker takes 20 minutes of setup. This takes zero."
 Signature visual neither tool has: the ghost replay drawn inside the real video.
 
-Users: high-school physics students and teachers.
+Headline: any phone becomes a physics lab instrument. Fits come with residuals and uncertainty, and the
+system refuses to fit bad data (verifiable: the language model never produces a measurement).
+First users: high-school physics students and teachers.
+Added 2026-10-29: Muse Voice Transcribe for spoken setup ("I'm dropping a tennis ball"). Demo-first build order:
+one clip end to end (film, track, fit, ghost) before the other motions.
 
 ## Scope (v1)
 
