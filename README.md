@@ -29,3 +29,7 @@ Live analysis needs `MODEL_API_KEY` (Meta Model API). Without it the app serves 
 
 Everything in this repository was written during the building period (the design docs under
 `docs/superpowers/` were drafted on Oct 25 and contain no code).
+
+## Accuracy (synthetic)
+
+`docs/benchmark.md`: g is recovered within about 1% under noise and dropped frames, and the held-out check refused 100% of clips with an unmodelled late push (0% false certifications). This is synthetic data; the real-clip scoreboard comes from `python -m ghostlab scoreboard`.
