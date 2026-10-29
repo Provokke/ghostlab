@@ -26,3 +26,4 @@ table{width:100%;border-collapse:collapse}td{padding:5px 0;border-top:1px solid 
 .msg{color:var(--mute);min-height:1.4em}
 .sub{color:var(--mute);font-size:14px}
 [hidden]{display:none!important}
+.say{display:flex;gap:8px}.say input{flex:1;background:#0f121a;border:1px solid #262c3a;color:var(--ink);border-radius:999px;padding:10px 14px;font:inherit;min-width:0}

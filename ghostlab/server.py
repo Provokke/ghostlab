@@ -7,12 +7,12 @@ import tempfile
 from pathlib import Path
 
 import numpy as np
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from ghostlab import meta_api, pipeline, whatif
+from ghostlab import meta_api, pipeline, voice, whatif
 
 ROOT = Path(__file__).resolve().parent.parent
 WEB = ROOT / "web"
@@ -58,6 +58,26 @@ def simulate(req: SimRequest):
     py = req.origin_px[1] - y / req.m_per_px
     clean = lambda a: [None if not np.isfinite(v) else round(float(v), 2) for v in a]
     return {"px": clean(px), "py": clean(py)}
+
+
+class WhatIfText(BaseModel):
+    text: str
+    g: float
+    e: float | None = None
+
+
+@app.post("/api/whatif")
+def whatif_text(req: WhatIfText):
+    return {"transcript": req.text, "whatif": voice.parse_whatif(req.text, req.g, req.e)}
+
+
+@app.post("/api/voice")
+async def voice_whatif(audio: UploadFile = File(...), g: float = Form(...), e: float | None = Form(None)):
+    key = os.environ.get("MODEL_API_KEY")
+    if not key:
+        raise HTTPException(503, "Voice needs MODEL_API_KEY. Type your what-if instead.")
+    text = voice.transcribe(voice.to_wav(await audio.read()), key)
+    return {"transcript": text, "whatif": voice.parse_whatif(text, g, e)}
 
 
 @app.post("/api/analyze")

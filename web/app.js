@@ -95,6 +95,35 @@ function update() {
   clearTimeout(timer);
   timer = setTimeout(() => simulate(g, e, "what"), 60);
 }
+function applyWhatIf(r) {
+  $("heard").textContent = r.transcript ? `Heard: "${r.transcript}"` : "";
+  if (r.whatif.g != null) $("g").value = r.whatif.g;
+  if (r.whatif.e != null) $("e").value = r.whatif.e;
+  if (!Object.keys(r.whatif).length) $("heard").textContent += " (no gravity or bounce change found)";
+  update();
+}
+const curE = () => (R.chosen === "bounce" ? parseFloat($("e").value) : null);
+$("say").onchange = async () => {
+  const r = await api("/api/whatif", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: $("say").value, g: parseFloat($("g").value), e: curE() }) });
+  applyWhatIf(r);
+};
+let rec = null, chunks = [];
+$("mic").onclick = async () => {
+  if (rec) { rec.stop(); return; }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    rec = new MediaRecorder(stream); chunks = [];
+    rec.ondataavailable = (ev) => chunks.push(ev.data);
+    rec.onstop = async () => {
+      stream.getTracks().forEach((t) => t.stop()); rec = null; $("mic").textContent = "Speak";
+      const body = new FormData(); body.append("audio", new Blob(chunks)); body.append("g", $("g").value);
+      if (curE() != null) body.append("e", curE());
+      try { applyWhatIf(await api("/api/voice", { method: "POST", body })); } catch (err) { msg(err.message); }
+    };
+    rec.start(); $("mic").textContent = "Stop";
+  } catch (err) { msg("Microphone unavailable: " + err.message); }
+};
 $("g").oninput = update; $("e").oninput = update;
 
 function at(pts, t) {
