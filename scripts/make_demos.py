@@ -49,9 +49,11 @@ def sam_text(xs, ys):
                      for i, (cx, cy) in enumerate(zip(xs, ys)) if np.isfinite(cx))
 
 
-def make(name, motion, module, sim, ident_extra=None, extra=None):
+def make(name, motion, module, sim, ident_extra=None, extra=None, warp=None):
     t = np.arange(0, SECONDS, 1 / FPS)
     x, y = module.simulate(sim, t)
+    if warp:
+        x, y = warp(t, x, y)
     cx, cy = px(x, y)
     rng = np.random.default_rng(3)
     cx, cy = cx + rng.normal(0, 0.8, len(t)), cy + rng.normal(0, 0.8, len(t))
@@ -72,3 +74,12 @@ def make(name, motion, module, sim, ident_extra=None, extra=None):
 OUT.mkdir(parents=True, exist_ok=True)
 for name, (motion, module, sim) in CASES.items():
     make(name, motion, module, sim)
+
+
+def kicked(t, x, y):
+    """Something nudges the ball upward late in the clip: physics the early frames cannot predict."""
+    k = np.clip(t - 1.0, 0, None)
+    return x + 0.8 * k, y + 2.2 * k
+
+
+make("bump", "projectile", projectile, {"x0": 0.0, "vx": 1.6, "y0": 0.1, "vy": 3.2, "g": 9.81}, warp=kicked)

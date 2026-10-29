@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ghostlab</title>
+<meta name="theme-color" content="#0b0d12">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -17,10 +20,15 @@
     <label class="film">Film or upload a clip<input id="file" type="file" accept="video/*" capture="environment" hidden></label>
   </section>
   <section class="stage" id="stage" hidden>
-    <div class="vwrap"><video id="video" playsinline muted loop controls></video><canvas id="overlay"></canvas></div>
+    <div class="vwrap"><span id="tag" class="tag" hidden></span><video id="video" playsinline muted loop controls></video><canvas id="overlay"></canvas></div>
     <div class="legend"><i class="real"></i> real path <i class="ghost"></i> ghost twin <i class="what"></i> what-if</div>
   </section>
   <section class="card trust" id="trust" hidden></section>
+  <section class="card" id="chart" hidden>
+    <h2>The prediction test</h2>
+    <canvas id="plot" role="img" aria-label="Height over time: real points, the fitted curve, and where the prediction began"></canvas>
+    <p class="sub">Everything left of the dashed line was used to fit. Everything right of it was predicted blind.</p>
+  </section>
   <section class="card" id="whatif" hidden>
     <h2>What if&hellip;</h2>
     <div class="chips" id="presets"></div>
@@ -31,7 +39,7 @@
   </section>
   <section class="card" id="numbers" hidden></section>
   <section class="card" id="words" hidden></section>
-  <p id="msg" class="msg"></p>
+  <p id="msg" class="msg" role="status" aria-live="polite"></p>
 </main>
 <script src="app.js"></script>
 </body>

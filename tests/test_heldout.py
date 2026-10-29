@@ -31,3 +31,11 @@ def test_unfittable_data_is_refused_not_raised():
     t = np.arange(0, 0.1, 1 / 30)
     tiny = Track(t=t, x=t, y=t, m_per_px=0.001)
     assert check(tiny, "projectile")["verdict"] == "refused"
+
+
+def test_result_carries_the_blind_prediction_model():
+    from ghostlab.fit import projectile as pj
+    tr = make()
+    r = check(tr, "projectile")
+    x, y = pj.simulate(r["sim"], tr.t - r["t_origin"])
+    assert np.nanmax(np.hypot(x - tr.x, y - tr.y)) < 0.05

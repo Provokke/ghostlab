@@ -24,7 +24,7 @@ def check(track: Track, motion: str, pivot=None, train_frac: float = TRAIN_FRACT
     test_mask = ~train_mask
     out = {"motion": motion, "train_n": int(train_mask.sum()), "test_n": int(test_mask.sum()),
            "train_frac": train_frac, "verdict": "refused", "reason": None,
-           "train_rmse": None, "test_rmse": None, "test_error_cm": None}
+           "train_rmse": None, "test_rmse": None, "test_error_cm": None, "sim": None, "t_origin": None}
     if out["test_n"] < MIN_TEST_POINTS:
         out["reason"] = "not enough frames after the fit window"
         return out
@@ -34,6 +34,7 @@ def check(track: Track, motion: str, pivot=None, train_frac: float = TRAIN_FRACT
     except FitError as exc:
         out["reason"] = str(exc)
         return out
+    out.update(sim=fit.sim, t_origin=float(track.t[train_mask][0]))
     px, py = module.simulate(fit.sim, track.t[test_mask] - track.t[train_mask][0])
     err = np.sqrt((track.x[test_mask] - px) ** 2 + (track.y[test_mask] - py) ** 2)
     if not np.isfinite(err).any():

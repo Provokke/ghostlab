@@ -2,6 +2,7 @@ const $ = (id) => document.getElementById(id);
 const video = $("video"), canvas = $("overlay"), ctx = canvas.getContext("2d");
 let R = null, ghostG = null, whatPts = null, timer = null;
 const DT = 1 / 60;
+const LABEL = { g: "Gravity", e: "Bounciness", launch_angle: "Launch angle", L: "String length", period: "Period", a: "Acceleration", angle: "Slope angle" };
 
 const fmt = (v, d = 2) => (v == null ? "-" : Number(v).toFixed(d));
 const msg = (t) => ($("msg").textContent = t || "");
@@ -32,7 +33,7 @@ async function loadDemo(name, btn) {
 $("file").onchange = async (ev) => {
   const f = ev.target.files[0];
   if (!f) return;
-  msg("Analysing your clip: SAM 3.1 is tracking it. About a minute.");
+  $("msg").innerHTML = '<span class="spin"></span>SAM 3.1 is tracking your clip. About a minute.';
   const body = new FormData(); body.append("file", f);
   try { await show(await api("/api/analyze", { method: "POST", body })); msg(""); }
   catch (e) { msg(e.message); }
@@ -42,7 +43,8 @@ async function show(res) {
   R = res; whatPts = null; ghostG = null;
   if (res.error) { msg(res.error); return; }
   msg("");
-  ["stage", "trust", "whatif", "numbers", "words"].forEach((id) => ($(id).hidden = false));
+  ["stage", "trust", "chart", "whatif", "numbers", "words"].forEach((id) => ($(id).hidden = false));
+  $("tag").hidden = !res.demo; $("tag").textContent = "Sample clip (synthetic)";
   video.src = res.video; video.play().catch(() => {});
   canvas.width = res.clip.width; canvas.height = res.clip.height;
   const fit = res.fits[res.chosen], tw = res.twin;
@@ -54,8 +56,13 @@ async function show(res) {
       ? `Fitted on the first ${Math.round(tw.train_frac * 100)}% of the clip, then predicted the last ${tw.test_n} frames it never saw. Off by this much.`
       : `Not trusted: ${tw.reason}. Ghostlab will not show numbers it cannot back up.`}</div>
     <div class="sub">${res.identification.object} &middot; ${res.chosen} &middot; fit quality ${fit.quality}</div>`;
-  $("numbers").innerHTML = "<h2>Measured</h2><table>" + Object.entries(fit.params)
-    .map(([k, p]) => `<tr><td>${k.replace(/_/g, " ")}</td><td>${fmt(p.value, 3)} &plusmn; ${fmt(p.error, 3)} ${p.unit}</td></tr>`).join("") + "</table>";
+  const table = "<table>" + Object.entries(fit.params)
+    .filter(([, p]) => p.error > 0 || p.value !== Math.round(p.value))
+    .map(([k, p]) => `<tr><td>${LABEL[k] || k.replace(/_/g, " ")}</td><td>${fmt(p.value, 3)} &plusmn; ${fmt(p.error, 3)} ${p.unit}</td></tr>`).join("") + "</table>";
+  $("numbers").innerHTML = ok ? "<h2>Measured</h2>" + table
+    : `<h2>Numbers withheld</h2><p class="sub">This fit did not predict the part of the clip it never saw, so its numbers are not trustworthy.</p><button class="chip" id="showany">Show anyway</button><div id="untrusted" hidden>${table}</div>`;
+  if (!ok) $("showany").onclick = () => { $("untrusted").hidden = false; $("showany").hidden = true; };
+  $("whatif").hidden = !ok; $("words").hidden = !ok;
   const ex = res.explanation;
   $("words").innerHTML = ex ? `<h2>What it means</h2><p>${ex.explanation}</p><p class="sub">Ask: ${ex.class_question}</p>` : "";
   const g = fit.sim.g ?? 9.81;
@@ -83,11 +90,36 @@ function times() {
 
 async function simulate(g, e, which) {
   const tr = R.track, fit = R.fits[R.chosen], t = times();
+  const blind = which === "ghost" && R.twin.sim;
+  const body = JSON.stringify({ motion: R.chosen, sim: blind ? R.twin.sim : fit.sim, m_per_px: tr.m_per_px, origin_px: tr.origin_px,
+    t: blind ? t.map((v) => v - R.twin.t_origin) : t, g: blind ? null : g, e: blind ? null : e });
   const out = await api("/api/simulate", { method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ motion: R.chosen, sim: fit.sim, t, m_per_px: tr.m_per_px, origin_px: tr.origin_px, g, e }) });
+    body });
   const pts = { t, px: out.px, py: out.py };
-  if (which === "ghost") ghostG = pts; else whatPts = pts;
+  if (which === "ghost") { ghostG = pts; drawChart(); } else whatPts = pts;
 }
+
+function drawChart() {
+  if (!R || !ghostG) return;
+  const tr = R.track, cv = $("plot"), c = cv.getContext("2d"), dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth, H = cv.clientHeight; cv.width = W * dpr; cv.height = H * dpr; c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const useY = Math.max(...tr.y) - Math.min(...tr.y) >= Math.max(...tr.x) - Math.min(...tr.x);
+  const real = useY ? tr.y : tr.x;
+  const gh = ghostG.t.map((_, i) => (ghostG.px[i] == null ? null : useY ? (tr.origin_px[1] - ghostG.py[i]) * tr.m_per_px : (ghostG.px[i] - tr.origin_px[0]) * tr.m_per_px));
+  const vals = real.concat(gh.filter((v) => v != null)), lo = Math.min(...vals), hi = Math.max(...vals), span = hi - lo || 1;
+  const T = Math.max(...tr.t), pad = 28, X = (t) => pad + (t / T) * (W - pad - 8), Y = (v) => H - 22 - ((v - lo) / span) * (H - 36);
+  const cut = tr.t[0] + R.twin.train_frac * (T - tr.t[0]), css = getComputedStyle(document.body);
+  const mute = css.getPropertyValue("--mute"), cy = css.getPropertyValue("--ghost"), co = css.getPropertyValue("--real");
+  c.fillStyle = "rgba(91,231,255,.07)"; c.fillRect(X(0), 4, X(cut) - X(0), H - 26);
+  c.fillStyle = "rgba(255,159,67,.09)"; c.fillRect(X(cut), 4, X(T) - X(cut), H - 26);
+  c.strokeStyle = mute; c.setLineDash([4, 4]); c.beginPath(); c.moveTo(X(cut), 4); c.lineTo(X(cut), H - 22); c.stroke(); c.setLineDash([]);
+  c.strokeStyle = cy; c.lineWidth = 2; c.beginPath(); let pen = false;
+  gh.forEach((v, i) => { if (v == null) { pen = false; return; } const x = X(ghostG.t[i]), y = Y(v); pen ? c.lineTo(x, y) : c.moveTo(x, y); pen = true; }); c.stroke();
+  c.fillStyle = co; real.forEach((v, i) => { c.beginPath(); c.arc(X(tr.t[i]), Y(v), 2.6, 0, 7); c.fill(); });
+  c.fillStyle = mute; c.font = "11px system-ui"; c.fillText("fit window", X(0) + 4, H - 6 - 12); c.fillText("predicted blind", X(cut) + 6, H - 6 - 12);
+  c.fillText(useY ? "height (m)" : "position (m)", 2, H - 6); c.fillText(T.toFixed(1) + " s", W - 34, H - 6);
+}
+window.addEventListener("resize", drawChart);
 
 function update() {
   const g = parseFloat($("g").value), e = R.chosen === "bounce" ? parseFloat($("e").value) : null;
