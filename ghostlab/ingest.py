@@ -11,7 +11,7 @@ import numpy as np
 
 MAX_SECONDS = 15
 MAX_HEIGHT = 720
-SHAKE_LIMIT = 0.02  # background shift above 2% of the width reads as a hand-held camera
+SHAKE_LIMIT = 0.01  # background shift above 1% of the width (75th percentile over the clip) reads as a hand-held camera
 
 
 @dataclass(frozen=True)
@@ -54,6 +54,29 @@ def _shift(a: np.ndarray, b: np.ndarray) -> float:
     return float(np.hypot(dx, dy) / a.shape[1])
 
 
+MIN_FEATURES = 15  # fewer background corners than this and the drift cannot be measured
+
+
+def camera_shift(frames: list[np.ndarray]) -> float:
+    """Typical background drift against the first frame as a fraction of the width.
+
+    Tracks corners and takes the median motion, so a ball moving through a textured scene does not count;
+    a featureless wall gives 0 because there is nothing to measure."""
+    gray = [cv2.cvtColor(f, cv2.COLOR_BGR2GRAY) for f in frames]
+    pts = cv2.goodFeaturesToTrack(gray[0], maxCorners=300, qualityLevel=0.01, minDistance=10)
+    if pts is None or len(pts) < MIN_FEATURES:
+        return 0.0
+    shifts = []
+    for g in gray[:: max(1, len(gray) // 20)][1:]:
+        nxt, ok, _ = cv2.calcOpticalFlowPyrLK(gray[0], g, pts, None)
+        good = ok.ravel() == 1
+        if good.sum() < MIN_FEATURES:
+            continue
+        d = np.median((nxt - pts)[good].reshape(-1, 2), axis=0)
+        shifts.append(float(np.hypot(*d) / g.shape[1]))
+    return float(np.percentile(shifts, 75)) if shifts else 0.0
+
+
 def prepare(src: Path, work: Path) -> Clip:
     work.mkdir(parents=True, exist_ok=True)
     out = work / "clip.mp4"
@@ -63,6 +86,6 @@ def prepare(src: Path, work: Path) -> Clip:
         raise ValueError("the clip has fewer than two frames")
     n = len(frames)
     keys = [cv2.imencode(".jpg", frames[i])[1].tobytes() for i in (0, n // 2, n - 1)]
-    shift = _shift(frames[n // 10], frames[(9 * n) // 10])
+    shift = camera_shift(frames)
     h, w = frames[0].shape[:2]
     return Clip(out, fps, n, w, h, keys, shift)

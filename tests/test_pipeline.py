@@ -60,6 +60,16 @@ def test_wrong_size_cannot_be_certified(tmp_path):
     assert "not about 9.8" in result["twin"]["reason"]
 
 
+def test_moving_camera_cannot_be_certified(tmp_path, monkeypatch):
+    from ghostlab import ingest
+    monkeypatch.setattr(ingest, "SHAKE_LIMIT", -1.0)
+    src = tmp_path / "throw.mp4"
+    write_clip(src)
+    fake = FakeMeta(chat_replies=[IDENT, EXPLAIN], sam_text=sam_text())
+    result = run(src, tmp_path / "work", fake, cache_root=tmp_path / "cache")
+    assert result["twin"]["verdict"] == "refused" and "camera moved" in result["twin"]["reason"]
+
+
 def test_second_run_is_served_from_cache(tmp_path):
     src = tmp_path / "throw.mp4"
     write_clip(src)

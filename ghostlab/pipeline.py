@@ -37,7 +37,8 @@ class Overrides:
 def run(src: Path, work: Path, c, overrides: Overrides = Overrides(), cache_root: Path | None = None) -> dict:
     clip = ingest.prepare(src, work)
     warnings = []
-    if clip.camera_shift > ingest.SHAKE_LIMIT:
+    camera_moved = clip.camera_shift > ingest.SHAKE_LIMIT
+    if camera_moved:
         warnings.append("The camera moved. Prop your phone against something and film again.")
     ident = cached("identify", identify.PROMPT_VERSION.encode() + b"".join(clip.key_frames),
                    lambda: identify.identify(c, clip.key_frames), cache_root)
@@ -79,6 +80,8 @@ def run(src: Path, work: Path, c, overrides: Overrides = Overrides(), cache_root
     chosen = results[motion]
     explanation = None
     twin = heldout.check(track, motion, pivot)
+    if camera_moved and twin["verdict"] == "certified":
+        twin = {**twin, "verdict": "refused", "reason": "the camera moved, so pixel positions are not real positions"}
     if isinstance(chosen, FitResult):
         if (w := speed_warning(chosen)):
             warnings.append(w)
