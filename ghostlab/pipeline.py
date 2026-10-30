@@ -78,9 +78,13 @@ def run(src: Path, work: Path, c, overrides: Overrides = Overrides(), cache_root
     results = fit_all(track, pivot)
     chosen = results[motion]
     explanation = None
+    twin = heldout.check(track, motion, pivot)
     if isinstance(chosen, FitResult):
         if (w := speed_warning(chosen)):
             warnings.append(w)
+            if twin["verdict"] == "certified":
+                twin = {**twin, "verdict": "refused",
+                        "reason": f"g is {chosen.params['g'].value:.1f}, not about 9.8: size or playback speed likely wrong"}
         key = explain.PROMPT_VERSION + ident["object"] + json.dumps(chosen.to_json(), sort_keys=True)
         explanation = cached("explain", key.encode(), lambda: explain.explain(c, ident["object"], chosen), cache_root)
     return {
@@ -90,7 +94,7 @@ def run(src: Path, work: Path, c, overrides: Overrides = Overrides(), cache_root
         "fits": {k: v.to_json() if isinstance(v, FitResult) else {"error": v} for k, v in results.items()},
         "chosen": motion,
         "better_alternative": better_alternative(motion, results),
-        "twin": heldout.check(track, motion, pivot),
+        "twin": twin,
         "notes": notes,
         "warnings": warnings,
         "explanation": explanation,

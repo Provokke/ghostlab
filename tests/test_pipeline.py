@@ -50,6 +50,16 @@ def test_end_to_end_recovers_g(tmp_path):
     assert [c[0] for c in fake.calls] == ["chat", "file", "sam", "chat"]
 
 
+def test_wrong_size_cannot_be_certified(tmp_path):
+    src = tmp_path / "throw.mp4"
+    write_clip(src)
+    fake = FakeMeta(chat_replies=[IDENT, EXPLAIN], sam_text=sam_text())
+    result = run(src, tmp_path / "work", fake, Overrides(size_m=BALL_M * 3), cache_root=tmp_path / "cache")
+    assert result["warnings"]
+    assert result["twin"]["verdict"] == "refused"
+    assert "not about 9.8" in result["twin"]["reason"]
+
+
 def test_second_run_is_served_from_cache(tmp_path):
     src = tmp_path / "throw.mp4"
     write_clip(src)
