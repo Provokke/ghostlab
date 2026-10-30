@@ -31,5 +31,5 @@ These are rendered, not filmed: photographic-ish wall, motion blur, noise, H.264
 
 Caveats found by this run:
 - The language model guessed a 6.7 cm tennis ball for a 10 cm ball. With that guess toss and pendulum read g of 6.0 and 6.8, and the g-plausibility gate refused them. The reported numbers above use `--size 0.10`.
-- With three keyframes the model called the bounce clip a plain drop. It needs the motion override, or `better_alternative`, to catch that.
+- With three keyframes the model called the bounce clip a plain drop. The identifier now gets six evenly spaced frames and calls it a bounce with no override.
 

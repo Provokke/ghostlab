@@ -24,7 +24,7 @@ def test_prepare_normalises_and_grabs_key_frames(tmp_path):
     assert abs(clip.fps - 30) < 0.5
     assert 58 <= clip.n_frames <= 61
     assert clip.height == 720
-    assert len(clip.key_frames) == 3 and all(f[:2] == b"\xff\xd8" for f in clip.key_frames)
+    assert len(clip.key_frames) == 6 and all(f[:2] == b"\xff\xd8" for f in clip.key_frames)
     assert clip.camera_shift < SHAKE_LIMIT
 
 

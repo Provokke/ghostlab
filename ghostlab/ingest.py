@@ -11,6 +11,7 @@ import numpy as np
 
 MAX_SECONDS = 15
 MAX_HEIGHT = 720
+KEY_FRAMES = 6  # evenly spaced stills for the identification step; three cannot show a rebound
 SHAKE_LIMIT = 0.01  # background shift above 1% of the width (75th percentile over the clip) reads as a hand-held camera
 
 
@@ -85,7 +86,7 @@ def prepare(src: Path, work: Path) -> Clip:
     if len(frames) < 2:
         raise ValueError("the clip has fewer than two frames")
     n = len(frames)
-    keys = [cv2.imencode(".jpg", frames[i])[1].tobytes() for i in (0, n // 2, n - 1)]
+    keys = [cv2.imencode(".jpg", frames[i])[1].tobytes() for i in sorted({round(k * (n - 1) / (KEY_FRAMES - 1)) for k in range(KEY_FRAMES)})]
     shift = camera_shift(frames)
     h, w = frames[0].shape[:2]
     return Clip(out, fps, n, w, h, keys, shift)
