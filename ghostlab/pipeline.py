@@ -80,6 +80,8 @@ def run(src: Path, work: Path, c, overrides: Overrides = Overrides(), cache_root
     chosen = results[motion]
     explanation = None
     twin = heldout.check(track, motion, pivot)
+    if not isinstance(chosen, FitResult) and twin["verdict"] == "certified":
+        twin = {**twin, "verdict": "refused", "reason": f"the full-clip fit failed: {chosen}"}
     if camera_moved and twin["verdict"] == "certified":
         twin = {**twin, "verdict": "refused", "reason": "the camera moved, so pixel positions are not real positions"}
     if isinstance(chosen, FitResult):

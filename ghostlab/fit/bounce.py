@@ -42,6 +42,14 @@ def _arc(t: np.ndarray, y: np.ndarray):
     return -2 * a, 2 * math.sqrt(cov[0, 0]), apex, math.sqrt(jac @ cov @ jac), (a, b, c)
 
 
+def _usable_arc(t: np.ndarray, y: np.ndarray):
+    """An arc, or None for a stretch that is not one (the ball settling or rolling after its last real bounce)."""
+    try:
+        return _arc(t, y)
+    except FitError:
+        return None
+
+
 def _meet(pa, pb, near: float, fallback: float) -> float:
     """Height where two consecutive parabolas meet, nearest the bounce time."""
     roots = np.roots(np.subtract(pa, pb))
@@ -67,7 +75,7 @@ def fit(track: Track) -> FitResult:
         raise FitError("no bounce found")
     bounds = [-1, *lows.tolist(), len(t)]
     arcs = [np.arange(a + 1, b) for a, b in zip(bounds[:-1], bounds[1:])]
-    fits = [_arc(t[i], y[i]) if len(i) >= MIN_ARC_POINTS else None for i in arcs]
+    fits = [_usable_arc(t[i], y[i]) if len(i) >= MIN_ARC_POINTS else None for i in arcs]
     pairs = [(k, fits[k], fits[k + 1]) for k in range(len(fits) - 1) if fits[k] and fits[k + 1]]
     if not pairs:
         raise FitError("need at least two full arcs between bounces")

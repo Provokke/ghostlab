@@ -70,6 +70,14 @@ def test_moving_camera_cannot_be_certified(tmp_path, monkeypatch):
     assert result["twin"]["verdict"] == "refused" and "camera moved" in result["twin"]["reason"]
 
 
+def test_failed_full_fit_cannot_be_certified(tmp_path):
+    src = tmp_path / "throw.mp4"
+    write_clip(src)
+    fake = FakeMeta(chat_replies=[IDENT, EXPLAIN], sam_text=sam_text())
+    result = run(src, tmp_path / "work", fake, Overrides(motion="bounce"), cache_root=tmp_path / "cache")
+    assert result["twin"]["verdict"] != "certified"
+
+
 def test_second_run_is_served_from_cache(tmp_path):
     src = tmp_path / "throw.mp4"
     write_clip(src)

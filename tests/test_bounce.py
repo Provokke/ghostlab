@@ -36,3 +36,9 @@ def test_single_arc_is_not_a_bounce():
     x, y = projectile.simulate({"x0": 0.0, "vx": 2.0, "y0": 0.0, "vy": 3.0, "g": 9.81}, t)
     with pytest.raises(FitError):
         bounce.fit(noisy(t, x, y))
+
+
+def test_ball_settling_after_last_bounce_does_not_break_the_fit():
+    result = bounce.fit(make(seconds=6.0, fps=30, sigma=0.003))
+    assert abs(result.params["e"].value - 0.8) < 0.05
+    assert abs(result.params["g"].value - 9.81) < 0.5
