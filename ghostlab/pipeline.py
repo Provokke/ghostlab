@@ -11,6 +11,21 @@ from ghostlab.core import FitError, FitResult
 from ghostlab.fit.select import better_alternative, fit_all
 
 
+EARTH_G = 9.81
+G_PLAUSIBLE = (0.7, 1.3)  # fitted g outside 70-130% of Earth's: wrong scale or altered playback speed
+
+
+def speed_warning(chosen) -> str | None:
+    g = getattr(chosen, "params", {}).get("g")
+    if g is None:
+        return None
+    lo, hi = G_PLAUSIBLE
+    if lo * EARTH_G <= g.value <= hi * EARTH_G:
+        return None
+    return (f"Fitted gravity is {g.value:.2f} m/s2, far from Earth's 9.81. The clip may be slow motion or "
+            "sped up, or the size is wrong. Film at normal speed and check the size.")
+
+
 @dataclass(frozen=True)
 class Overrides:
     object: str | None = None
@@ -44,6 +59,8 @@ def run(src: Path, work: Path, c, overrides: Overrides = Overrides(), cache_root
     chosen = results[motion]
     explanation = None
     if isinstance(chosen, FitResult):
+        if (w := speed_warning(chosen)):
+            warnings.append(w)
         key = explain.PROMPT_VERSION + ident["object"] + json.dumps(chosen.to_json(), sort_keys=True)
         explanation = cached("explain", key.encode(), lambda: explain.explain(c, ident["object"], chosen), cache_root)
     return {

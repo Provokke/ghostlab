@@ -67,3 +67,16 @@ def test_override_changes_motion(tmp_path):
     result = run(src, tmp_path / "work", fake, Overrides(motion="ramp"), cache_root=tmp_path / "cache")
     assert result["chosen"] == "ramp"
     assert result["better_alternative"] == "projectile"
+
+
+def test_speed_warning_flags_slow_motion_g():
+    from ghostlab.core import Param
+    from ghostlab.pipeline import speed_warning
+
+    class Fit:
+        def __init__(self, g):
+            self.params = {"g": Param(g, 0.01, "m/s2")}
+
+    assert speed_warning(Fit(0.83)) and "slow motion" in speed_warning(Fit(0.83))
+    assert speed_warning(Fit(9.6)) is None
+    assert speed_warning(type("F", (), {"params": {}})()) is None
