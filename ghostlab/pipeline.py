@@ -11,6 +11,7 @@ from ghostlab.core import FitError, FitResult
 from ghostlab.fit.select import better_alternative, fit_all
 
 
+FALLBACK_PROMPTS = ("ball", "round object", "small moving object")  # tried in order when the first prompt tracks too little
 EARTH_G = 9.81
 G_PLAUSIBLE = (0.7, 1.3)  # fitted g outside 70-130% of Earth's: wrong scale or altered playback speed
 
@@ -46,14 +47,33 @@ def run(src: Path, work: Path, c, overrides: Overrides = Overrides(), cache_root
     size = overrides.size_m or ident["real_size_m"]
     motion = overrides.motion or ident["motion"]
     video = clip.path.read_bytes()
-    sam = cached("sam", prompt.encode() + b"\0" + video,
-                 lambda: {"text": meta_api.sam_track(c, meta_api.upload_video(c, clip.path), prompt)}, cache_root)
-    frames = sam_parse.parse(sam["text"])
-    pixels = sam_parse.to_pixel_track(frames, clip.n_frames, clip.fps, clip.width, clip.height)
-    try:
-        track, notes = scale.to_metres(pixels, size)
-    except FitError as exc:
-        return {"error": str(exc), "identification": ident, "warnings": warnings}
+    file_id = None
+
+    def track_with(prompt: str):
+        nonlocal file_id
+
+        def call():
+            nonlocal file_id
+            file_id = file_id or meta_api.upload_video(c, clip.path)
+            return {"text": meta_api.sam_track(c, file_id, prompt)}
+
+        sam = cached("sam", prompt.encode() + b"\0" + video, call, cache_root)
+        frames = sam_parse.parse(sam["text"])
+        pixels = sam_parse.to_pixel_track(frames, clip.n_frames, clip.fps, clip.width, clip.height)
+        return scale.to_metres(pixels, size)
+
+    tried, failure = [], None
+    for candidate in dict.fromkeys([prompt, *FALLBACK_PROMPTS]):
+        try:
+            track, notes = track_with(candidate)
+            if tried:
+                notes = [*notes, f"SAM found nothing usable for {tried[0]!r}; tracked {candidate!r} instead"]
+            break
+        except FitError as exc:
+            tried.append(candidate)
+            failure = exc
+    else:
+        return {"error": str(failure), "identification": ident, "warnings": warnings, "prompts_tried": tried}
     pivot = scale.pivot_to_metres(track, (ident["pivot_x_px"], ident["pivot_y_px"])) if ident["has_pivot"] else None
     results = fit_all(track, pivot)
     chosen = results[motion]

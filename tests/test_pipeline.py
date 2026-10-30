@@ -80,3 +80,30 @@ def test_speed_warning_flags_slow_motion_g():
     assert speed_warning(Fit(0.83)) and "slow motion" in speed_warning(Fit(0.83))
     assert speed_warning(Fit(9.6)) is None
     assert speed_warning(type("F", (), {"params": {}})()) is None
+
+
+class PromptAwareMeta(FakeMeta):
+    """SAM finds the ball only for the prompt 'ball'; any other prompt tracks nothing."""
+
+    def _responses_create(self, model, input):
+        prompt = input[0]["content"][0]["text"]
+        self.sam_text = sam_text() if prompt == "ball" else ""
+        return super()._responses_create(model, input)
+
+
+def test_falls_back_to_generic_prompt_when_sam_finds_nothing(tmp_path):
+    src = tmp_path / "throw.mp4"
+    write_clip(src)
+    fake = PromptAwareMeta(chat_replies=[IDENT, EXPLAIN])
+    result = run(src, tmp_path / "work", fake, cache_root=tmp_path / "cache")
+    assert "error" not in result
+    assert result["twin"]["verdict"] == "certified"
+    assert any("'tennis ball'" in n and "'ball'" in n for n in result["notes"])
+    assert [c[0] for c in fake.calls].count("file") == 1  # video uploaded once, not per prompt
+
+
+def test_reports_every_prompt_tried_when_all_fail(tmp_path):
+    src = tmp_path / "throw.mp4"
+    write_clip(src)
+    result = run(src, tmp_path / "work", FakeMeta(chat_replies=[IDENT], sam_text=""), cache_root=tmp_path / "cache")
+    assert result["error"] and result["prompts_tried"][0] == "tennis ball" and len(result["prompts_tried"]) == 4
