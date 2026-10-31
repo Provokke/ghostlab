@@ -100,22 +100,42 @@ def _require_key() -> None:
         raise HTTPException(503, NEEDS_KEY)
 
 
+MAX_UPLOAD = 150 * 1024 * 1024
+BUSY = "The analysis service is busy or unavailable. Try again, or use a sample clip."
+
+
+def _save_capped(file: UploadFile, dest: Path) -> None:
+    size = 0
+    with dest.open("wb") as out:
+        while chunk := file.file.read(1024 * 1024):
+            size += len(chunk)
+            if size > MAX_UPLOAD:
+                raise HTTPException(413, "That clip is too large. Keep it under 150 MB.")
+            out.write(chunk)
+
+
 @app.post("/api/identify")
-async def identify(file: UploadFile = File(...)):
+def identify(file: UploadFile = File(...)):  # plain def: FastAPI runs it in a worker thread, ffmpeg and the model call must not block the loop
     _require_key()
     uid = uuid.uuid4().hex
     folder = WEB / "uploads" / uid
     folder.mkdir(parents=True)
-    src = folder / f"src{Path(file.filename or 'clip.mp4').suffix[:8]}"
-    src.write_bytes(await file.read())
     try:
-        with tempfile.TemporaryDirectory() as tmp:
-            clip = ingest.prepare(src, Path(tmp))
-            ident = pipeline.identify_clip(meta_api.client(), clip)
-            (WEB / "uploads" / f"{uid}.mp4").write_bytes(clip.path.read_bytes())
-    except (ValueError, subprocess.CalledProcessError):
+        src = folder / f"src{Path(file.filename or 'clip.mp4').suffix[:8]}"
+        _save_capped(file, src)
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                clip = ingest.prepare(src, Path(tmp))
+                ident = pipeline.identify_clip(meta_api.client(), clip)
+                (WEB / "uploads" / f"{uid}.mp4").write_bytes(clip.path.read_bytes())
+        except (ValueError, subprocess.CalledProcessError):
+            raise HTTPException(400, "That file could not be read as a video.")
+        except Exception:
+            raise HTTPException(502, BUSY)
+    except BaseException:
         shutil.rmtree(folder, ignore_errors=True)
-        raise HTTPException(400, "That file could not be read as a video.")
+        (WEB / "uploads" / f"{uid}.mp4").unlink(missing_ok=True)
+        raise
     return {"id": uid, "identification": ident, "video": f"/uploads/{uid}.mp4",
             "clip": {"fps": clip.fps, "n_frames": clip.n_frames, "width": clip.width, "height": clip.height}}
 
@@ -134,6 +154,8 @@ def analyze(req: AnalyzeRequest):
                                   pipeline.Overrides(object=req.object, size_m=req.size_m, motion=req.motion))
         except (ValueError, subprocess.CalledProcessError):
             raise HTTPException(400, "That file could not be read as a video.")
+        except Exception:
+            raise HTTPException(502, BUSY)
     result["video"] = f"/uploads/{req.id}.mp4"
     return result
 

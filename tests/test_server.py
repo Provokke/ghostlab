@@ -94,3 +94,20 @@ def test_no_key_503(env, monkeypatch):
     monkeypatch.delenv("MODEL_API_KEY")
     assert upload(client, clip).status_code == 503
     assert client.post("/api/analyze", json={"id": "0" * 32}).status_code == 503
+
+
+def test_model_failure_is_502_and_cleans_up(env, monkeypatch):
+    client, clip, make, web = env
+    make([])  # no chat replies: the identify call raises
+    r = upload(client, clip)
+    assert r.status_code == 502
+    assert "Try again" in r.json()["detail"]
+    assert not list((web / "uploads").iterdir())
+
+
+def test_oversize_upload_413_and_cleans_up(env, monkeypatch):
+    client, clip, make, web = env
+    make([IDENT])
+    monkeypatch.setattr(server, "MAX_UPLOAD", 1000)
+    assert upload(client, clip).status_code == 413
+    assert not list((web / "uploads").iterdir())

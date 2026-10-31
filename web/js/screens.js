@@ -16,7 +16,11 @@ export async function go(name, data) {
   document.querySelectorAll("section[data-screen]").forEach((s) => (s.hidden = s.dataset.screen !== name));
   document.body.dataset.screen = name;
   currentMod = mod;
-  await mod.mount(document.querySelector(`section[data-screen="${name}"]`), ctx);
+  try { await mod.mount(document.querySelector(`section[data-screen="${name}"]`), ctx); }
+  catch (e) {
+    console.error(e);
+    if (name !== "capture") { await go("capture"); document.querySelector('section[data-screen="capture"] .msg').textContent = e.message || "Something went wrong."; }
+  }
 }
 
 go("capture");

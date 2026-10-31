@@ -7,9 +7,10 @@ import { holdToTalk } from "./voice.js";
 
 const PLANETS = [["Moon", 1.62], ["Mars", 3.71], ["Jupiter", 24.8]];
 const fmt = (v, d = 2) => Number(v).toFixed(d);
-let ghost = null, timer = null, gone = false;
+let ghost = null, timer = null, gone = false, exporter = {}, stopTalk = () => {};
 
 export async function mount(root, ctx) {
+  if (ctx.result?.twin?.verdict !== "certified") return go("verdict"); // a refused fit never gets what-ifs
   gone = false;
   const R = ctx.result, fit = R.fits[R.chosen];
   const video = document.getElementById("video"), canvas = document.getElementById("overlay");
@@ -64,7 +65,7 @@ export async function mount(root, ctx) {
     msg.textContent = "";
     try { apply(await whatif({ text: $("#say").value, g: curG(), e: curE() })); } catch (e) { msg.textContent = e.message; }
   };
-  holdToTalk($("#mic"), async (blob) => {
+  stopTalk = holdToTalk($("#mic"), async (blob) => {
     msg.textContent = "";
     const body = new FormData(); body.append("audio", blob); body.append("g", curG());
     if (curE() != null) body.append("e", curE());
@@ -76,20 +77,21 @@ export async function mount(root, ctx) {
   exp.onclick = async () => {
     exp.disabled = true; exp.textContent = "Recording…"; msg.textContent = "";
     try {
-      const blob = await exportClip(video, canvas);
+      const blob = await exportClip(video, canvas, (exporter = {}));
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
       a.download = `ghostlab-${R.identification.object.replace(/\W+/g, "-")}.${blob.type.includes("mp4") ? "mp4" : "webm"}`;
       document.body.append(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(a.href), 10000);
-    } catch (e) { msg.textContent = e.message; }
+    } catch (e) { if (!gone) msg.textContent = e.message; }
     exp.disabled = false; exp.textContent = "Export clip";
-    video.play().catch(() => {});
+    if (!gone) video.play().catch(() => {});
   };
 }
 
 export function unmount() {
   gone = true; clearTimeout(timer);
+  exporter.cancel?.(); stopTalk();
   ghost?.destroy(); ghost = null;
   document.getElementById("video").pause();
 }

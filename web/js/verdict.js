@@ -6,7 +6,7 @@ const fmt = (v, d = 2) => (v == null ? "-" : Number(v).toFixed(d));
 const $ = (root, sel) => root.querySelector(sel);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-let ghost = null, ghostPts = null, R = null, onResize = null, gone = false;
+let ghost = null, ghostPts = null, R = null, onResize = null, gone = false, mounts = 0;
 
 function table(fit) {
   return "<table>" + Object.entries(fit.params)
@@ -37,7 +37,7 @@ function drawChart() {
 }
 
 export async function mount(root, ctx) {
-  gone = false;
+  gone = false; const mine = ++mounts;
   R = ctx.result;
   const video = document.getElementById("video"), canvas = document.getElementById("overlay");
   const tw = R.twin, ok = tw.verdict === "certified", fit = R.fits[R.chosen];
@@ -87,9 +87,10 @@ export async function mount(root, ctx) {
   ghost.setResult(R);
   ghost.mode("verdict");
   $(root, "#replay").onclick = () => ghost?.replay();
-  ghostPts = await ghostPoints(R);
-  if (gone) return;
-  ghost.setGhost(ghostPts);
+  const pts = await ghostPoints(R);
+  if (gone || mine !== mounts) return;
+  ghostPts = pts;
+  ghost.setGhost(pts);
   if (!body.hidden) drawChart();
 }
 

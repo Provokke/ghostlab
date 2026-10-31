@@ -1,7 +1,7 @@
 // Record the replay (video frame + ghost overlay) to a clip in the browser: canvas.captureStream + MediaRecorder.
 const TYPES = ["video/mp4", "video/webm;codecs=vp9", "video/webm"];
 
-export function exportClip(video, ghostCanvas) {
+export function exportClip(video, ghostCanvas, handle = {}) {
   return new Promise((resolve, reject) => {
     const off = document.createElement("canvas");
     if (typeof MediaRecorder === "undefined" || !off.captureStream) return reject(new Error("This browser cannot record the clip."));
@@ -20,9 +20,10 @@ export function exportClip(video, ghostCanvas) {
     const finish = (err) => {
       if (done) return;
       done = true; cancelAnimationFrame(raf); video.loop = wasLoop; video.onended = null;
-      if (err) return reject(err);
+      if (err) { if (rec.state === "recording") rec.stop(); return reject(err); }
       if (rec.state === "recording") rec.stop();
     };
+    handle.cancel = () => finish(new Error("Export cancelled."));
     rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
     rec.onerror = () => finish(new Error("Recording failed."));
     rec.onstop = () => (chunks.length ? resolve(new Blob(chunks, { type: rec.mimeType || type })) : reject(new Error("Recording was empty.")));

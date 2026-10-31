@@ -12,7 +12,8 @@ export function mount(root, ctx) {
   video.addEventListener("loadeddata", () => { video.currentTime = 0; video.pause(); }, { once: true });
   video.pause();
 
-  const id = ctx.ident.identification, guess = id.real_size_m;
+  const id = ctx.ident.identification;
+  const guess = Number.isFinite(id.real_size_m) && id.real_size_m > 0 ? id.real_size_m : PRESETS[0][1];
   root.querySelector(".obj").textContent = id.object;
   const options = PRESETS.map(([name, m]) => ({ key: String(m), label: `${name} ${cm(m)}`, m }));
   if (!options.some((o) => Math.abs(o.m - guess) < 1e-3)) options.unshift({ key: String(guess), label: `${id.object} ${cm(guess)}`, m: guess });

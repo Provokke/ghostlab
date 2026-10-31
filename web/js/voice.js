@@ -9,6 +9,7 @@ export function holdToTalk(button, onAudio, onError) {
 
   button.onpointerdown = async (e) => {
     e.preventDefault();
+    try { button.setPointerCapture(e.pointerId); } catch {}
     if (rec || starting) return;
     wantStop = false; starting = true;
     try {
@@ -27,8 +28,10 @@ export function holdToTalk(button, onAudio, onError) {
       button.classList.add("rec"); button.textContent = "Listening…";
       if (wantStop) stop(); // finger already lifted while the mic permission was pending
     } catch (err) {
+      stream?.getTracks().forEach((t) => t.stop()); stream = null; rec = null;
       onError(`Microphone unavailable: ${err.message}`);
     } finally { starting = false; }
   };
-  button.onpointerup = button.onpointerleave = button.onpointercancel = stop;
+  button.onpointerup = button.onpointercancel = stop;
+  return stop;
 }
