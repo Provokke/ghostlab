@@ -4,11 +4,12 @@ import { createGhost, ghostPoints } from "./ghost.js";
 import { go } from "./screens.js";
 
 const REVEAL_MS = 4200;
-let ghost = null, cancelled = false;
+let ghost = null, cancelled = false, mounts = 0;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export async function mount(root, ctx) {
-  cancelled = false;
+  cancelled = false; const mine = ++mounts;
+  const stale = () => cancelled || mine !== mounts; // a newer mount owns the screen now
   const video = document.getElementById("video"), canvas = document.getElementById("overlay");
   const text = root.querySelector(".status-text"), err = root.querySelector(".err"), status = root.querySelector(".status");
   const scan = root.querySelector(".scan");
@@ -23,7 +24,7 @@ export async function mount(root, ctx) {
   ghost = createGhost(canvas, video);
 
   const fail = (message) => {
-    if (cancelled) return;
+    if (stale()) return;
     status.hidden = true; scan.hidden = true; err.hidden = false;
     root.querySelector(".err-text").textContent = message;
   };
@@ -31,7 +32,7 @@ export async function mount(root, ctx) {
   const job = ctx.job; ctx.job = null;
   if (!job) return fail("Nothing to analyse. Film a clip.");
   job.then(async (out) => {
-    if (cancelled) return;
+    if (stale()) return;
     if (out.go !== "verdict") return go(out.go, out.data);
     const R = out.data;
     text.textContent = "Drawing the ghost.";
@@ -40,7 +41,7 @@ export async function mount(root, ctx) {
     ghost.mode("analysing");
     scan.hidden = true;
     await sleep(REVEAL_MS);
-    if (!cancelled) go("verdict", R);
+    if (!stale()) go("verdict", R);
   }).catch((e) => fail(e.message || "Something went wrong."));
 }
 

@@ -111,3 +111,18 @@ def test_oversize_upload_413_and_cleans_up(env, monkeypatch):
     monkeypatch.setattr(server, "MAX_UPLOAD", 1000)
     assert upload(client, clip).status_code == 413
     assert not list((web / "uploads").iterdir())
+
+
+def test_old_uploads_are_swept(env):
+    import os, time
+    client, clip, make, web = env
+    make([IDENT])
+    up = web / "uploads"
+    old_dir, old_mp4 = up / ("a" * 32), up / ("a" * 32 + ".mp4")
+    old_dir.mkdir(parents=True); (old_dir / "src.mp4").write_bytes(b"x"); old_mp4.write_bytes(b"x")
+    stale = time.time() - 2 * 24 * 3600
+    for path in (old_dir, old_mp4):
+        os.utime(path, (stale, stale))
+    fresh = up / ("b" * 32); fresh.mkdir()
+    assert upload(client, clip).status_code == 200
+    assert not old_dir.exists() and not old_mp4.exists() and fresh.exists()

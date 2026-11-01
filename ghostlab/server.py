@@ -7,6 +7,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import time
 import uuid
 from pathlib import Path
 
@@ -104,6 +105,23 @@ MAX_UPLOAD = 150 * 1024 * 1024
 BUSY = "The analysis service is busy or unavailable. Try again, or use a sample clip."
 
 
+UPLOAD_TTL = 24 * 3600
+
+
+def _sweep_uploads() -> None:
+    """Delete uploads older than a day so the disk does not fill; runs before each new upload."""
+    root = WEB / "uploads"
+    if not root.is_dir():
+        return
+    cutoff = time.time() - UPLOAD_TTL
+    for item in root.iterdir():
+        try:
+            if item.stat().st_mtime < cutoff and (item.is_dir() or UPLOAD_ID.fullmatch(item.stem)):
+                shutil.rmtree(item, ignore_errors=True) if item.is_dir() else item.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
 def _save_capped(file: UploadFile, dest: Path) -> None:
     size = 0
     with dest.open("wb") as out:
@@ -117,6 +135,7 @@ def _save_capped(file: UploadFile, dest: Path) -> None:
 @app.post("/api/identify")
 def identify(file: UploadFile = File(...)):  # plain def: FastAPI runs it in a worker thread, ffmpeg and the model call must not block the loop
     _require_key()
+    _sweep_uploads()
     uid = uuid.uuid4().hex
     folder = WEB / "uploads" / uid
     folder.mkdir(parents=True)
