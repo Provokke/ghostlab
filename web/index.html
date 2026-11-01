@@ -4,43 +4,86 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ghostlab</title>
-<meta name="theme-color" content="#0b0d12">
+<meta name="theme-color" content="#06080d">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="style.css">
 </head>
-<body>
-<header>
-  <h1>Ghost<span>lab</span></h1>
-  <p>Film it. Ghostlab measures it, predicts what comes next, and shows you the ghost.</p>
-</header>
-<main>
-  <section class="picker">
-    <div id="demos" class="chips"></div>
-    <label class="film">Film or upload a clip<input id="file" type="file" accept="video/*" capture="environment" hidden></label>
-  </section>
-  <section class="stage" id="stage" hidden>
-    <div class="vwrap"><span id="tag" class="tag" hidden></span><video id="video" playsinline muted loop controls></video><canvas id="overlay"></canvas></div>
-    <div class="legend"><i class="real"></i> real path <i class="ghost"></i> ghost twin <i class="what"></i> what-if</div>
-  </section>
-  <section class="card trust" id="trust" hidden></section>
-  <section class="card" id="chart" hidden>
-    <h2>The prediction test</h2>
-    <canvas id="plot" role="img" aria-label="Height over time: real points, the fitted curve, and where the prediction began"></canvas>
-    <p class="sub">Everything left of the dashed line was used to fit. Everything right of it was predicted blind.</p>
-  </section>
-  <section class="card" id="whatif" hidden>
-    <h2>What if&hellip;</h2>
-    <div class="chips" id="presets"></div>
-    <div class="say"><input id="say" type="text" placeholder="Say or type: what if this was on Mars?"><button class="chip" id="mic">Speak</button></div>
-    <p class="sub" id="heard"></p>
-    <label>Gravity <b id="gval"></b> m/s&sup2;<input id="g" type="range" min="1" max="26" step="0.1"></label>
-    <label id="erow">Bounciness <b id="eval"></b><input id="e" type="range" min="0.1" max="0.98" step="0.01"></label>
-  </section>
-  <section class="card" id="numbers" hidden></section>
-  <section class="card" id="words" hidden></section>
-  <p id="msg" class="msg" role="status" aria-live="polite"></p>
-</main>
-<script src="app.js"></script>
+<body data-screen="capture">
+<div id="stage"><video id="video" playsinline muted loop></video><canvas id="overlay"></canvas></div>
+
+<section data-screen="capture" class="screen">
+  <h1 class="wordmark">Ghost<span>lab</span></h1>
+  <p class="lede">Film a throw, a drop or a swing. Ghostlab measures it, tests its own prediction, and shows you the ghost.</p>
+  <div class="actions">
+    <label class="btn primary">Film<input id="film-input" type="file" accept="video/*" capture="environment" hidden></label>
+    <label class="btn">Upload<input id="upload-input" type="file" accept="video/*" hidden></label>
+  </div>
+  <p class="hint">Prop the phone against something and film at normal speed.</p>
+  <p class="label">Sample clips</p>
+  <div id="demos" class="chips"></div>
+  <p class="msg" role="status" aria-live="polite"></p>
+</section>
+
+<section data-screen="analysing" class="screen over" hidden>
+  <div class="scan" aria-hidden="true"></div>
+  <p class="status" role="status" aria-live="polite"><span class="spin"></span><span class="status-text"></span></p>
+  <div class="dock err" hidden>
+    <p class="err-text"></p>
+    <button class="btn primary" id="film-again">Film again</button>
+  </div>
+</section>
+
+<section data-screen="confirm" class="screen over" hidden>
+  <div class="dock">
+    <p class="label">Is this right?</p>
+    <p class="detected">Detected: <b class="obj"></b></p>
+    <p class="sub">Its size sets the scale of everything. Pick the real size.</p>
+    <div class="chips sizes"></div>
+    <label class="custom" hidden>Size in cm <input id="custom-cm" type="number" inputmode="decimal" min="1" max="999" step="any" placeholder="e.g. 7"></label>
+    <p class="msg" role="status" aria-live="polite"></p>
+    <button class="btn primary wide" id="confirm-go">Confirm and measure</button>
+  </div>
+</section>
+
+<section data-screen="verdict" class="screen over" hidden>
+  <span class="tag" hidden>Sample clip (synthetic)</span>
+  <div class="dock sheet">
+    <div class="handle" role="button" tabindex="0" aria-label="Show the prediction test" aria-expanded="false"><i></i></div>
+    <div class="row">
+      <span class="badge"></span>
+      <span class="off"></span>
+    </div>
+    <p class="reason" hidden></p>
+    <div class="row buttons">
+      <button class="btn" id="replay">Replay</button>
+      <button class="btn primary" id="to-playground" hidden>What if&hellip;</button>
+      <button class="btn" id="film-again-v" hidden>Film again</button>
+    </div>
+    <div class="sheet-body" hidden>
+      <h2>The prediction test</h2>
+      <canvas id="plot" role="img" aria-label="Height over time: real points, the fitted curve, and where the prediction began"></canvas>
+      <p class="sub">Left of the dashed line was used to fit. Right of it was predicted blind.</p>
+      <div id="numbers"></div>
+      <div id="words"></div>
+    </div>
+  </div>
+</section>
+
+<section data-screen="playground" class="screen over" hidden>
+  <button class="btn back" id="back">&larr; Back</button>
+  <div class="dock">
+    <div class="chips presets"></div>
+    <label class="slider">Gravity <b id="gval"></b> m/s&sup2;<input id="g" type="range" min="1" max="26" step="0.1"></label>
+    <label class="slider" id="erow">Bounciness <b id="eval"></b><input id="e" type="range" min="0.1" max="0.98" step="0.01"></label>
+    <div class="say"><input id="say" type="text" placeholder="Type: what if this was on Mars?" aria-label="What-if"><button class="btn mic" id="mic">Hold to talk</button></div>
+    <p class="sub heard"></p>
+    <div class="row buttons">
+      <button class="btn" id="export">Export clip</button>
+    </div>
+    <p class="msg" role="status" aria-live="polite"></p>
+  </div>
+</section>
+<script type="module" src="js/screens.js"></script>
 </body>
 </html>

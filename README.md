@@ -14,11 +14,25 @@ Built for the Meta Global AI Developer Hackathon, Push the Frontier track.
 4. **Held-out check:** fit on the first 60% of the clip, predict the last 40%, score against the real track. Certified or refused.
 5. The phone web app draws the twin as a ghost over the real video and re-simulates under what-if physics.
 
+### The phone app
+
+A dark, five-screen flow, 390 px wide first: **Capture** (Film, Upload, sample clips) -> **Analysing** (the clip plays, the real
+path draws in orange, then the cyan ghost) -> **Confirm** (check the object's size before any verdict) -> **Verdict**
+(CERTIFIED or REFUSED, "off by N cm", a drag-up sheet with the prediction-test chart and numbers) -> **Playground**
+(Moon / Mars / Jupiter, gravity and bounciness sliders, hold-to-talk what-ifs, export the replay as a clip).
+Sample clips skip Confirm and are tagged "Sample clip (synthetic)". A refused fit never opens the Playground.
+
+Front end: vanilla ES modules in `web/js/` (`screens.js` state machine, `ghost.js` canvas, one module per screen, `api.js`,
+`voice.js`, `export.js`), design tokens on `:root` in `web/style.css`. No build step.
+Backend flow: `POST /api/identify` (store clip, Muse Spark guess) then `POST /api/analyze` with `{id, size_m}`; answers are
+cached, so correcting the size is a cheap local re-fit.
+
 ## Run it
 
 ```
 python -m venv .venv && .venv/Scripts/pip install -e ".[dev]" fastapi uvicorn python-multipart
 .venv/Scripts/python -m pytest -q
+.venv/Scripts/python scripts/ui_check.py       # headless Edge walk of all five screens at 390x844 (stubbed API)
 .venv/Scripts/python scripts/make_demos.py      # synthetic dev demos (placeholders, not real footage)
 .venv/Scripts/python -m uvicorn ghostlab.server:app --port 8791
 ```

@@ -34,14 +34,19 @@ class Overrides:
     motion: str | None = None
 
 
+def identify_clip(c, clip: ingest.Clip, cache_root: Path | None = None) -> dict:
+    """Muse Spark's guess at the object, its size and the motion; cached per clip."""
+    return cached("identify", identify.PROMPT_VERSION.encode() + b"".join(clip.key_frames),
+                  lambda: identify.identify(c, clip.key_frames), cache_root)
+
+
 def run(src: Path, work: Path, c, overrides: Overrides = Overrides(), cache_root: Path | None = None) -> dict:
     clip = ingest.prepare(src, work)
     warnings = []
     camera_moved = clip.camera_shift > ingest.SHAKE_LIMIT
     if camera_moved:
         warnings.append("The camera moved. Prop your phone against something and film again.")
-    ident = cached("identify", identify.PROMPT_VERSION.encode() + b"".join(clip.key_frames),
-                   lambda: identify.identify(c, clip.key_frames), cache_root)
+    ident = identify_clip(c, clip, cache_root)
     if ident["size_confidence"] == "low" and overrides.size_m is None:
         warnings.append(f"Not sure of the {ident['object']}'s size. Check it before trusting the numbers.")
     prompt = overrides.object or ident["sam_prompt"]
