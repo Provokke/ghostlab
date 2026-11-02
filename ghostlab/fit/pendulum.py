@@ -36,7 +36,12 @@ def _pivot_and_length(x: np.ndarray, y: np.ndarray) -> tuple[float, float, float
     start = [px, py, float(np.mean(np.hypot(x - px, y - py)))]
     res = least_squares(lambda p: np.hypot(x - p[0], y - p[1]) - p[2], start)
     s2 = float(np.sum(res.fun**2)) / (len(x) - 3)
-    cov = np.linalg.inv(res.jac.T @ res.jac) * s2
+    try:
+        cov = np.linalg.inv(res.jac.T @ res.jac) * s2
+    except np.linalg.LinAlgError as exc:
+        raise FitError("the path is too straight to find a pivot") from exc
+    if not np.isfinite(cov[2, 2]) or cov[2, 2] < 0:
+        raise FitError("the path is too straight to find a pivot")
     return float(res.x[0]), float(res.x[1]), float(res.x[2]), math.sqrt(cov[2, 2])
 
 

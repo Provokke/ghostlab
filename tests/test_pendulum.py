@@ -1,8 +1,10 @@
+from pathlib import Path
+
 import numpy as np
 import pytest
 from scipy.integrate import solve_ivp
 
-from ghostlab.core import FitError
+from ghostlab.core import FitError, Track
 from ghostlab.fit import pendulum, projectile
 from tests.synth import noisy
 
@@ -43,3 +45,10 @@ def test_projectile_arc_is_not_a_pendulum():
     x, y = projectile.simulate({"x0": 0.0, "vx": 2.0, "y0": 0.0, "vy": 3.0, "g": 9.81}, t)
     with pytest.raises(FitError):
         pendulum.fit(noisy(t, x, y))
+
+def test_straight_vertical_path_is_refused_not_a_crash():
+    # Real tracked bounce clip (x moves 1 mm): the circle fit's variance came out negative and crashed.
+    d = np.load(Path(__file__).parent / "data" / "straight_fall_track.npz")
+    track = Track(t=d["t"], x=d["x"], y=d["y"], m_per_px=float(d["m"]))
+    with pytest.raises(FitError):
+        pendulum.fit(track)
