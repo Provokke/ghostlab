@@ -30,7 +30,7 @@ cached, so correcting the size is a cheap local re-fit.
 ## Run it
 
 ```
-python -m venv .venv && .venv/Scripts/pip install -e ".[dev]" fastapi uvicorn python-multipart
+python -m venv .venv && .venv/Scripts/pip install -e ".[dev]"
 .venv/Scripts/python -m pytest -q
 .venv/Scripts/python scripts/ui_check.py       # headless Edge walk of all five screens at 390x844 (stubbed API)
 .venv/Scripts/python scripts/make_demos.py      # synthetic dev demos (placeholders, not real footage)
