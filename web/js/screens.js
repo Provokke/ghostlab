@@ -23,4 +23,13 @@ export async function go(name, data) {
   }
 }
 
+// Keep the video above the bottom panel (verdict sheet, playground controls) instead of under it.
+const syncDock = () => {
+  const d = document.querySelector("section[data-screen]:not([hidden]) .dock");
+  document.body.style.setProperty("--dock-h", d && ["verdict", "playground"].includes(document.body.dataset.screen) ? `${d.offsetHeight}px` : "0px");
+};
+const dockObserver = new ResizeObserver(syncDock);
+document.querySelectorAll(".dock").forEach((d) => dockObserver.observe(d));
+new MutationObserver(syncDock).observe(document.body, { attributes: true, attributeFilter: ["data-screen"] });
+
 go("capture");
