@@ -66,5 +66,14 @@ for motion in ("projectile", "bounce", "pendulum"):
         _, bad = run(motion, sigma, drop, True)
         rows.append(f"| {motion} | {sigma * 1000:.0f} | {int(drop * 100)}% | {'-' if e is None else f'{e:.1f}%'} | {good * 100:.0f}% | {bad * 100:.0f}% |")
 out = "# Synthetic benchmark\n\n20 seeds per row. Bad physics = a late unmodelled push the early frames cannot predict.\n\n" + "\n".join(rows) + "\n"
-Path("docs/benchmark.md").write_text(out, encoding="utf-8")
+# Rewrite only the synthetic section: everything from "## Rendered clips" down is written by hand from live runs.
+doc = Path("docs/benchmark.md")
+old = doc.read_text(encoding="utf-8") if doc.exists() else ""
+tail = old[old.index("
+## Rendered clips"):] if "
+## Rendered clips" in old else ""
+doc.write_text(out.rstrip("
+") + "
+" + tail, encoding="utf-8", newline="
+")
 print(out)
