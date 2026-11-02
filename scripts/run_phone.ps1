@@ -19,7 +19,7 @@ if (-not $env:GHOSTLAB_NO_PROMPT) {
   $secure = Read-Host "Meta MODEL_API_KEY (input hidden; Enter to skip)" -AsSecureString
   $plain = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure))
 }
-if ($plain) { $env:MODEL_API_KEY = $plain } else { Remove-Item Env:MODEL_API_KEY -ErrorAction SilentlyContinue; Write-Host "No key: bundled demo clips only." }
+if ($plain) { $env:MODEL_API_KEY = $plain } elseif ($env:GHOSTLAB_NO_PROMPT -and $env:MODEL_API_KEY) { Write-Host "Using the key already in this environment." } else { Remove-Item Env:MODEL_API_KEY -ErrorAction SilentlyContinue; Write-Host "No key: bundled demo clips only." }
 $ips | ForEach-Object { Write-Host "On the phone (same Wi-Fi), open:  https://$($_):8791" -ForegroundColor Cyan }
 Write-Host "Safari will warn about the certificate: Show Details -> visit this website. Ctrl+C here to stop." -ForegroundColor Yellow
 & .venv/Scripts/python.exe -m uvicorn ghostlab.server:app --host 0.0.0.0 --port 8791 --ssl-keyfile $key --ssl-certfile $crt
