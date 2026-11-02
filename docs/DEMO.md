@@ -10,7 +10,7 @@ Rubric: Impact 30, Meta tooling 25, Demo 25, Technical depth 20. Show only what 
 | 1:10-1:35 | Bad clip (camera moving or two objects): twin refused | "When it cannot back up a number, it says so." |
 | 1:35-2:10 | Playground: hold to talk, "what if this was on the Moon" (Muse Voice Transcribe), ghost rises; Export clip | "Ask a what-if out loud. The twin answers under new physics." |
 | 2:10-2:35 | Scoreboard table: measured g vs 9.81 across all clips | "Across N clips, g is within X%, with error bars." |
-| 2:35-3:00 | Stack slide: SAM 3.1, Muse Spark, Voice Transcribe, Muse Code; public repo URL | "Video in, trusted physics out. Built this week." |
+| 2:35-3:00 | Stack slide: SAM 3.1, Muse Spark, Voice Transcribe; public repo URL | "Video in, trusted physics out. Built this week." |
 
 UI (2026-11-01): the shots follow Capture -> Analysing -> Confirm -> Verdict -> Playground; `scripts/ui_check.py` saves a screenshot of each to `work/ui_*.png`.
 
