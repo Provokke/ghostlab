@@ -23,7 +23,7 @@ These are rendered, not filmed: photographic-ish wall, motion blur, noise, H.264
 
 | Clip | What it should do | Result |
 |---|---|---|
-| bounce (restitution 0.75) | certify | certified: e 0.748, g 9.71 (1% off) |
+| bounce (restitution 0.75) | certify | certified: e 0.748, g 10.03 (2.3% off), held-out error 0.8 cm (re-run 2026-11-02; Muse Spark called it a plain drop, the pipeline switched to the bounce model because the drop model could not fit) |
 | pendulum (L 1.0 m, 25 deg, period 2.006 s) | certify | certified: L 1.028 m, period 2.027 s (1% off), g 10.08 (2.8% off) |
 | toss | certify | certified: g 8.94 (9% off; the SAM box includes motion blur, which inflates the ball's apparent size) |
 | camera shake | refuse | refused: the camera moved |
@@ -33,3 +33,4 @@ Caveats found by this run:
 - The language model guessed a 6.7 cm tennis ball for a 10 cm ball. With that guess toss and pendulum read g of 6.0 and 6.8, and the g-plausibility gate refused them. The reported numbers above use `--size 0.10`.
 - With three keyframes the model called the bounce clip a plain drop. The identifier now gets six evenly spaced frames and calls it a bounce with no override.
 
+Re-run 2026-11-02, all five clips live with `--size 0.10`: bounce, toss and pendulum certified; camera_shake refused (camera moved); slowmo refused (under one swing, g reads 1.13). Toss g 8.93 (9% off) and pendulum g 10.08 (2.8% off) are unchanged.

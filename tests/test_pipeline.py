@@ -135,3 +135,20 @@ def test_reports_every_prompt_tried_when_all_fail(tmp_path):
     write_clip(src)
     result = run(src, tmp_path / "work", FakeMeta(chat_replies=[IDENT], sam_text=""), cache_root=tmp_path / "cache")
     assert result["error"] and result["prompts_tried"][0] == "tennis ball" and len(result["prompts_tried"]) == 4
+
+def test_wrong_motion_guess_that_cannot_fit_falls_back_to_the_better_fit(tmp_path):
+    src = tmp_path / "throw.mp4"
+    write_clip(src)
+    wrong = json.dumps({**json.loads(IDENT), "motion": "bounce"}) if isinstance(IDENT, str) else {**IDENT, "motion": "bounce"}
+    fake = FakeMeta(chat_replies=[wrong, EXPLAIN], sam_text=sam_text())
+    result = run(src, tmp_path / "work", fake, cache_root=tmp_path / "cache")
+    assert result["chosen"] == "projectile"
+    assert any("bounce model could not fit" in n for n in result["notes"])
+
+
+def test_explicit_motion_override_is_never_switched(tmp_path):
+    src = tmp_path / "throw.mp4"
+    write_clip(src)
+    fake = FakeMeta(chat_replies=[IDENT, EXPLAIN], sam_text=sam_text())
+    result = run(src, tmp_path / "work", fake, Overrides(motion="bounce"), cache_root=tmp_path / "cache")
+    assert result["chosen"] == "bounce"

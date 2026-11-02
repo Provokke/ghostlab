@@ -83,6 +83,11 @@ def run(src: Path, work: Path, c, overrides: Overrides = Overrides(), cache_root
     pivot = scale.pivot_to_metres(track, (ident["pivot_x_px"], ident["pivot_y_px"])) if ident["has_pivot"] else None
     results = fit_all(track, pivot)
     chosen = results[motion]
+    # The model's motion guess is not a measurement: when it cannot fit the data at all and another
+    # motion fits much better, use that one. The held-out check below still decides the verdict.
+    if overrides.motion is None and not isinstance(chosen, FitResult) and (alt := better_alternative(motion, results)):
+        notes = [*notes, f"The {motion} model could not fit this clip ({chosen}); the {alt} model fits it much better, so {alt} was used"]
+        motion, chosen = alt, results[alt]
     explanation = None
     twin = heldout.check(track, motion, pivot)
     if not isinstance(chosen, FitResult) and twin["verdict"] == "certified":
