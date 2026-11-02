@@ -47,3 +47,7 @@ Everything in this repository was written during the building period (the design
 ## Accuracy (synthetic)
 
 `docs/benchmark.md`: g is recovered within about 1% under noise and dropped frames, and the held-out check refused 100% of clips with an unmodelled late push (0% false certifications). This is synthetic data; the real-clip scoreboard comes from `python -m ghostlab scoreboard`.
+
+## Licence
+
+MIT, see `LICENSE`. Submission text: `docs/SUBMISSION.md`.
