@@ -23,17 +23,19 @@ function drawChart() {
   const real = useY ? tr.y : tr.x;
   const gh = ghostPts.t.map((_, i) => (ghostPts.px[i] == null ? null : useY ? (tr.origin_px[1] - ghostPts.py[i]) * tr.m_per_px : (ghostPts.px[i] - tr.origin_px[0]) * tr.m_per_px));
   const vals = real.concat(gh.filter((v) => v != null)), lo = Math.min(...vals), hi = Math.max(...vals), span = hi - lo || 1;
-  const T = Math.max(...tr.t), pad = 28, X = (t) => pad + (t / T) * (W - pad - 8), Y = (v) => H - 22 - ((v - lo) / span) * (H - 36);
+  const T = Math.max(...tr.t), pad = 30, X = (t) => pad + (t / T) * (W - pad - 8), Y = (v) => H - 34 - ((v - lo) / span) * (H - 48);
   const cut = tr.t[0] + R.twin.train_frac * (T - tr.t[0]), css = getComputedStyle(document.documentElement);
   const mute = css.getPropertyValue("--mute"), cy = css.getPropertyValue("--ghost"), co = css.getPropertyValue("--real");
-  c.fillStyle = "rgba(91,231,255,.07)"; c.fillRect(X(0), 4, X(cut) - X(0), H - 26);
-  c.fillStyle = "rgba(255,159,67,.09)"; c.fillRect(X(cut), 4, X(T) - X(cut), H - 26);
-  c.strokeStyle = mute; c.setLineDash([4, 4]); c.beginPath(); c.moveTo(X(cut), 4); c.lineTo(X(cut), H - 22); c.stroke(); c.setLineDash([]);
+  c.fillStyle = "rgba(91,231,255,.07)"; c.fillRect(X(0), 4, X(cut) - X(0), H - 28);
+  c.fillStyle = "rgba(255,159,67,.09)"; c.fillRect(X(cut), 4, X(T) - X(cut), H - 28);
+  c.strokeStyle = mute; c.setLineDash([4, 4]); c.beginPath(); c.moveTo(X(cut), 4); c.lineTo(X(cut), H - 24); c.stroke(); c.setLineDash([]);
   c.strokeStyle = cy; c.lineWidth = 2; c.beginPath(); let pen = false;
   gh.forEach((v, i) => { if (v == null) { pen = false; return; } const x = X(ghostPts.t[i]), y = Y(v); pen ? c.lineTo(x, y) : c.moveTo(x, y); pen = true; }); c.stroke();
   c.fillStyle = co; real.forEach((v, i) => { c.beginPath(); c.arc(X(tr.t[i]), Y(v), 2.6, 0, 7); c.fill(); });
-  c.fillStyle = mute; c.font = "11px system-ui"; c.fillText("fit window", X(0) + 4, H - 18); c.fillText("predicted blind", X(cut) + 6, H - 18);
-  c.fillText(useY ? "height (m)" : "position (m)", 2, H - 6); c.fillText(T.toFixed(1) + " s", W - 34, H - 6);
+  c.fillStyle = mute; c.font = "11px system-ui"; c.textBaseline = "alphabetic";
+  c.fillText("fit window", X(0) + 2, H - 7); c.fillText("predicted blind", X(cut) + 6, H - 7);
+  c.textAlign = "right"; c.fillText(T.toFixed(1) + " s", W - 2, H - 7); c.textAlign = "center";
+  c.save(); c.translate(11, (4 + H - 24) / 2); c.rotate(-Math.PI / 2); c.fillText(useY ? "height (m)" : "position (m)", 0, 0); c.restore(); c.textAlign = "left";
 }
 
 export async function mount(root, ctx) {

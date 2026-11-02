@@ -7,6 +7,8 @@ function pick(file) {
   go("analysing", { video: URL.createObjectURL(file), demo: false, status: "Muse Spark is looking at your clip.", job });
 }
 
+const SAMPLES = { drop: ["Drop", "bounces, certifies"], throw: ["Throw", "arc, certifies"], bump: ["Bump", "refuses"] };
+
 export async function mount(root) {
   const chips = root.querySelector("#demos"), msg = root.querySelector(".msg");
   msg.textContent = "";
@@ -17,9 +19,12 @@ export async function mount(root) {
     input.onchange = () => pick(input.files[0]);
   }
   try {
-    for (const name of await getDemos()) {
-      const b = document.createElement("button");
-      b.className = "chip"; b.textContent = name; b.dataset.demo = name;
+    const order = ["drop", "throw", "bump"];
+    const names = (await getDemos()).sort((a, b) => (order.indexOf(a) + 9) % 9 - (order.indexOf(b) + 9) % 9);
+    for (const name of names) {
+      const b = document.createElement("button"), [title, note] = SAMPLES[name] || [name, "sample clip"];
+      b.className = "chip card"; b.dataset.demo = name;
+      b.innerHTML = `<b>${title}</b><span>${note}</span>`;
       b.onclick = async () => {
         b.disabled = true;
         try { const res = await getDemo(name); await go("verdict", res); }
