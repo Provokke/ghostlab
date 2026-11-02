@@ -83,3 +83,11 @@ def kicked(t, x, y):
 
 
 make("bump", "projectile", projectile, {"x0": 0.0, "vx": 1.6, "y0": 0.1, "vy": 3.2, "g": 9.81}, warp=kicked)
+
+
+# Browsers cannot play OpenCV's mpeg4: re-encode every demo clip to H.264 after the pipeline has read it.
+import shutil, subprocess, tempfile
+for mp4 in sorted(OUT.glob("*.mp4")):
+    tmp = Path(tempfile.gettempdir()) / f"{mp4.stem}.h264.mp4"
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(mp4), "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart", "-an", str(tmp)], check=True)
+    shutil.move(str(tmp), str(mp4))
