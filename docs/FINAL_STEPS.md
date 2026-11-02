@@ -14,6 +14,8 @@ Start the server (PowerShell, in `D:\External\Ghostlab`):
 - In Safari, accept the certificate warning (Show Details, then visit this website). HTTPS is needed because Safari only allows the microphone on secure pages.
 - Stop with Ctrl+C. The certificate lives in `work/cert/` (ignored by git) and lasts 7 days.
 
+Already checked in Playwright WebKit on the PC (2026-11-02, `scripts/webkit_check.py`): the page loads, a sample clip reaches Verdict, the H.264 clip plays, no console errors. That WebKit has no MediaRecorder, so steps 7 and 8 are untested until you do them on the phone.
+
 Tick each line; write down what fails and what Safari says.
 
 1. Capture screen loads, dark theme, no horizontal scroll, buttons easy to hit.
