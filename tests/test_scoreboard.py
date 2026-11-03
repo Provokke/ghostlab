@@ -33,3 +33,24 @@ def test_scores_each_clip(tmp_path):
     assert "| g | 2 | 1.3% | 1/2 |" in table
     assert "| length | 1 | 1.3% | 1/1 |" in table
     assert "1 clip(s) failed" in table
+
+
+def test_zero_truth_and_missing_quantity_do_not_crash(tmp_path):
+    csv = tmp_path / "truth.csv"
+    csv.write_text("clip,motion,quantity,value\ndrop1.mp4,projectile,g,0\ndrop2.mp4,projectile,e,0.5\nboom.mp4,projectile,g,9.81\n")
+    def run(clip, motion):
+        if clip.stem == "boom":
+            raise RuntimeError("kaput")
+        return fake_run([])(clip, motion)
+    rows = score(load(csv), run)
+    assert "error" not in rows[0] and rows[0]["error_pct"] is None and rows[0]["error_abs"] == 9.70
+    assert "error" in rows[1] and "error" in rows[2] and "kaput" in rows[2]["error"]
+    assert "2 clip(s) failed" in render(rows)
+
+
+def test_verdict_column_and_certified_but_wrong_count(tmp_path):
+    rows = [{"clip": "a.mp4", "motion": "projectile", "quantity": "g", "true": 9.81, "identified": True,
+             "value": 8.0, "sigma": 0.1, "error_pct": -18.5, "error_abs": -1.81, "within_2sigma": False,
+             "verdict": "certified"}]
+    table = render(rows)
+    assert "certified" in table and "1 certified clip(s) were off by more than 2σ" in table

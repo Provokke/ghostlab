@@ -31,3 +31,40 @@ def test_transcribe_sends_the_documented_request():
     assert transcribe(b"RIFF", "k", post=post) == "on mars"
     assert seen["url"].endswith("/asr/transcribe") and seen["headers"]["Authorization"] == "Bearer k"
     assert "muse-voice-transcribe-1.0" in seen["files"]["request"][1]
+
+
+def test_planet_needs_a_whole_word():
+    for text in ("marshmallow gravity", "smarts", "earthquake", "behalf of gravity"):
+        assert parse_whatif(text, 9.81, None) == {}, text
+
+
+def test_factor_applies_to_the_named_planet():
+    assert parse_whatif("half the gravity of mars", 9.81, None) == {"g": 1.85}
+
+
+def test_earliest_planet_wins():
+    assert parse_whatif("on mars, not the moon", 9.81, None) == {"g": 3.71}
+    assert parse_whatif("on the moon not mars", 9.81, None) == {"g": 1.62}
+
+
+def test_gravity_is_clamped_to_what_the_simulator_accepts():
+    out = parse_whatif("1000 times gravity", 9.81, None)
+    assert out["g"] == 50.0 and "50" in out["note"]
+    assert parse_whatif("0.001 times gravity", 9.81, None)["g"] == 0.1
+    assert "note" not in parse_whatif("twice the gravity", 9.81, None)
+    assert parse_whatif("jupiter", 9.81, None) == {"g": 24.8}
+
+
+def test_to_wav_has_a_timeout(monkeypatch):
+    from ghostlab import voice
+    seen = {}
+
+    def run(cmd, **kw):
+        seen.update(kw)
+        raise OSError("stop")
+    monkeypatch.setattr(voice.subprocess, "run", run)
+    try:
+        voice.to_wav(b"x")
+    except OSError:
+        pass
+    assert seen["timeout"] == voice.FFMPEG_TIMEOUT

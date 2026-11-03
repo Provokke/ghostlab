@@ -52,3 +52,26 @@ def test_straight_vertical_path_is_refused_not_a_crash():
     track = Track(t=d["t"], x=d["x"], y=d["y"], m_per_px=float(d["m"]))
     with pytest.raises(FitError):
         pendulum.fit(track)
+
+
+def test_wrong_pivot_is_corrected_not_trusted():
+    # swing() has the true pivot at (0, 1.0); a pivot guess 0.1 m off must not give a confident wrong g
+    for bad in [(0.0, 1.1), (0.03, 1.02)]:
+        result = pendulum.fit(swing(theta0=0.5), pivot=bad)
+        g = result.params["g"]
+        assert abs(g.value - 9.81) < 3 * g.error + 0.3, (bad, g)
+        assert abs(result.params["length"].value - 0.8) < 3 * result.params["length"].error + 0.01
+
+
+def test_small_pivot_error_widens_the_length_bar():
+    exact = pendulum.fit(swing(theta0=0.5), pivot=(0.0, 1.0)).params["length"]
+    off = pendulum.fit(swing(theta0=0.5), pivot=(0.0, 1.01)).params["length"]
+    assert off.error >= exact.error
+
+
+def test_nan_track_is_a_fit_error():
+    track = swing()
+    x = track.x.copy()
+    x[5] = np.nan
+    with pytest.raises(FitError):
+        pendulum.fit(Track(t=track.t, x=x, y=track.y, m_per_px=track.m_per_px))

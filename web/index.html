@@ -5,9 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ghostlab</title>
 <meta name="theme-color" content="#06080d">
+<meta name="description" content="Ghostlab films a throw, drop or swing, measures it, tests its own physics prediction blind, and shows you the ghost: certified or refused.">
+<meta name="color-scheme" content="dark">
+<meta property="og:type" content="website"><meta property="og:title" content="Ghostlab"><meta property="og:description" content="Film it. Ghostlab predicts it, tests itself, and shows you the ghost."><meta property="og:image" content="icons/icon-512.png"><meta property="og:site_name" content="Ghostlab">
+<meta name="twitter:card" content="summary"><meta name="twitter:title" content="Ghostlab"><meta name="twitter:description" content="Film it. Ghostlab predicts it, tests itself, and shows you the ghost.">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -15,9 +19,11 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body data-screen="capture">
-<div id="stage"><video id="video" playsinline muted loop></video><canvas id="overlay"></canvas></div>
+<noscript><p>Ghostlab needs JavaScript to run.</p></noscript>
+<div id="stage" aria-hidden="true"><video id="video" playsinline muted loop></video><canvas id="overlay"></canvas></div>
 
-<section data-screen="capture" class="screen capture">
+<main>
+<section data-screen="capture" class="screen capture" tabindex="-1" aria-label="Capture">
   <header>
     <h1 class="wordmark">Ghost<span>lab</span></h1>
     <p class="lede">Film a throw, a drop or a swing. Ghostlab measures it, tests its own prediction, and shows you the ghost.</p>
@@ -30,8 +36,8 @@
     <line x1="8" y1="138" x2="312" y2="138" stroke="var(--line)" stroke-width="2"/>
   </svg>
   <div class="bottom">
-    <label class="btn primary big">Film<input id="film-input" type="file" accept="video/*" capture="environment" hidden></label>
-    <label class="btn wide">Upload a clip<input id="upload-input" type="file" accept="video/*" hidden></label>
+    <label class="btn primary big">Film<input id="film-input" type="file" accept="video/*" capture="environment" class="sr"></label>
+    <label class="btn wide">Upload a clip<input id="upload-input" type="file" accept="video/*" class="sr"></label>
     <p class="hint">Prop the phone against something and film at normal speed.</p>
     <p class="label">Try a sample</p>
     <div id="demos" class="cards"></div>
@@ -39,7 +45,7 @@
   </div>
 </section>
 
-<section data-screen="analysing" class="screen over" hidden>
+<section data-screen="analysing" class="screen over" tabindex="-1" aria-label="Analysing" hidden>
   <div class="scan" aria-hidden="true"></div>
   <p class="status" role="status" aria-live="polite"><span class="spin"></span><span class="status-text"></span></p>
   <div class="dock err" hidden>
@@ -48,7 +54,7 @@
   </div>
 </section>
 
-<section data-screen="confirm" class="screen over" hidden>
+<section data-screen="confirm" class="screen over" tabindex="-1" aria-label="Confirm size" hidden>
   <div class="dock">
     <p class="label">Is this right?</p>
     <p class="detected">Detected: <b class="obj"></b></p>
@@ -60,15 +66,16 @@
   </div>
 </section>
 
-<section data-screen="verdict" class="screen over" hidden>
+<section data-screen="verdict" class="screen over" tabindex="-1" aria-label="Verdict" hidden>
   <span class="tag" hidden>Sample clip (synthetic)</span>
   <div class="dock sheet">
-    <div class="handle" role="button" tabindex="0" aria-label="Show the prediction test" aria-expanded="false"><i></i></div>
-    <div class="row">
+    <div class="handle" role="button" tabindex="0" aria-label="Show the prediction test" aria-expanded="false"><i></i><span class="ht"></span></div>
+    <div class="row verdict">
       <span class="badge"></span>
       <span class="off"></span>
     </div>
     <p class="reason" hidden></p>
+    <p class="legend" aria-label="Colour key"><span><i class="r"></i>Real</span><span><i class="g"></i>Ghost (prediction)</span><span><i class="w"></i>What-if</span></p>
     <div class="row buttons">
       <button class="btn" id="replay">Replay</button>
       <button class="btn primary" id="to-playground" hidden>What if&hellip;</button>
@@ -84,20 +91,22 @@
   </div>
 </section>
 
-<section data-screen="playground" class="screen over" hidden>
+<section data-screen="playground" class="screen over" tabindex="-1" aria-label="What if" hidden>
   <button class="btn back" id="back">&larr; Back</button>
   <div class="dock">
     <div class="chips presets"></div>
-    <label class="slider">Gravity <b id="gval"></b> m/s&sup2;<input id="g" type="range" min="1" max="26" step="0.1"></label>
+    <label class="slider">Gravity <b id="gval"></b> m/s&sup2;<input id="g" type="range" min="0.5" max="30" step="0.1"></label>
     <label class="slider" id="erow">Bounciness <b id="eval"></b><input id="e" type="range" min="0.1" max="0.98" step="0.01"></label>
     <div class="say"><input id="say" type="text" placeholder="Type: what if this was on Mars?" aria-label="What-if"><button class="btn mic" id="mic">Hold to talk</button></div>
     <p class="sub heard"></p>
+    <p class="legend" aria-label="Colour key"><span><i class="r"></i>Real</span><span><i class="g"></i>Ghost</span><span><i class="w"></i>What-if</span></p>
     <div class="row buttons">
       <button class="btn" id="export">Export clip</button>
     </div>
     <p class="msg" role="status" aria-live="polite"></p>
   </div>
 </section>
+</main>
 <script type="module" src="js/screens.js"></script>
 </body>
 </html>

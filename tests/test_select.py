@@ -34,3 +34,11 @@ def test_flags_projectile_when_ramp_was_chosen():
 
 def test_flags_bounce_when_projectile_was_chosen():
     assert better_alternative("projectile", fit_all(bouncing())) == "bounce"
+
+
+def test_more_parameters_do_not_win_on_flexibility_alone():
+    from ghostlab.core import FitResult
+    from ghostlab.fit.select import better_alternative
+    res = {"projectile": FitResult("projectile", {}, {}, 0.0100, "rough", 12),
+           "pendulum": FitResult("pendulum", {}, {}, 0.0060, "good", 12)}  # 8 params on 12 points
+    assert better_alternative("projectile", res) is None

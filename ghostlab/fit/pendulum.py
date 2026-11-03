@@ -12,6 +12,9 @@ MOTION = "pendulum"
 MIN_POINTS = 12
 MIN_CROSSINGS = 3  # at least one full swing
 MAX_LENGTH_ERROR = 0.05  # above 5% the fit is "rough": swing wider or give the pivot
+PIVOT_SIGMAS = 3.0  # a supplied pivot this many circle-fit sigmas from the fitted one is not trusted
+PIVOT_MISFIT = 0.05  # ... and a gap above this fraction of the length makes the fit "rough"
+PIVOT_PRIOR = 0.02  # a supplied pivot is a guess good to about this fraction of the length
 
 
 def _theta(t, A, gamma, omega, phi, offset):
@@ -30,31 +33,53 @@ def _circle_centre(x: np.ndarray, y: np.ndarray) -> tuple[float, float]:
     return float(c1 / 2), float(c2 / 2)
 
 
-def _pivot_and_length(x: np.ndarray, y: np.ndarray) -> tuple[float, float, float, float]:
-    """Geometric circle fit. The length error includes the pivot's uncertainty."""
-    px, py = _circle_centre(x, y)
-    start = [px, py, float(np.mean(np.hypot(x - px, y - py)))]
-    res = least_squares(lambda p: np.hypot(x - p[0], y - p[1]) - p[2], start)
+def _pivot_and_length(x: np.ndarray, y: np.ndarray,
+                      start: tuple[float, float] | None = None) -> tuple[float, float, float, float, float]:
+    """Geometric circle fit: pivot x, y, length, length error and pivot error (all metres).
+
+    The length error includes the pivot's uncertainty. `start` seeds the search (e.g. a supplied pivot)."""
+    px, py = start if start is not None else _circle_centre(x, y)
+    guess = [px, py, float(np.mean(np.hypot(x - px, y - py)))]
+    res = least_squares(lambda p: np.hypot(x - p[0], y - p[1]) - p[2], guess)
     s2 = float(np.sum(res.fun**2)) / (len(x) - 3)
     try:
         cov = np.linalg.inv(res.jac.T @ res.jac) * s2
     except np.linalg.LinAlgError as exc:
         raise FitError("the path is too straight to find a pivot") from exc
-    if not np.isfinite(cov[2, 2]) or cov[2, 2] < 0:
+    if not np.isfinite(cov[2, 2]) or cov[2, 2] < 0 or not np.isfinite(cov[:2, :2]).all():
         raise FitError("the path is too straight to find a pivot")
-    return float(res.x[0]), float(res.x[1]), float(res.x[2]), math.sqrt(cov[2, 2])
+    sigma_pivot = math.sqrt(max(float(cov[0, 0] + cov[1, 1]), 0.0))
+    return float(res.x[0]), float(res.x[1]), float(res.x[2]), math.sqrt(cov[2, 2]), sigma_pivot
+
+
+def _given_pivot(x: np.ndarray, y: np.ndarray, pivot: tuple[float, float]) -> tuple[float, float, float, float, bool]:
+    """Use a supplied pivot as a prior. Returns pivot x, y, length, length error and whether it was kept.
+
+    The pivot is refined by a free circle fit; if the two disagree the free fit wins, and if the supplied
+    pivot is kept its uncertainty is added to the length error (the old scatter-only error was ~30 sigma off)."""
+    px, py, L, eL, sigma_pivot = _pivot_and_length(x, y, start=pivot)
+    gap = math.hypot(px - pivot[0], py - pivot[1])
+    if gap > PIVOT_SIGMAS * sigma_pivot or gap > PIVOT_MISFIT * L:
+        return px, py, L, eL, gap <= PIVOT_MISFIT * L  # trust the data, not the guess
+    r = np.hypot(x - pivot[0], y - pivot[1])
+    scatter = float(np.std(r, ddof=1) / math.sqrt(len(r)))
+    away = np.column_stack([pivot[0] - x, pivot[1] - y]) / np.maximum(r, 1e-12)[:, None]  # d(radius)/d(pivot) per point
+    along = float(np.linalg.norm(away.mean(axis=0)))
+    sigma = max(gap, PIVOT_PRIOR * float(np.mean(r)))
+    return pivot[0], pivot[1], float(np.mean(r)), math.hypot(scatter, sigma * along), True
 
 
 def fit(track: Track, pivot: tuple[float, float] | None = None) -> FitResult:
+    """Fit the swing. A supplied pivot is a prior: it is refined by the data, never trusted blindly."""
+    track.validate()
     t, x, y = track.t, track.x, track.y
     if len(track) < MIN_POINTS:
         raise FitError(f"need at least {MIN_POINTS} tracked frames, got {len(track)}")
+    pivot_ok = True
     if pivot is None:
-        px, py, L, eL = _pivot_and_length(x, y)
+        px, py, L, eL, _ = _pivot_and_length(x, y)
     else:
-        px, py = pivot
-        r = np.hypot(x - px, y - py)
-        L, eL = float(np.mean(r)), float(np.std(r, ddof=1) / math.sqrt(len(r)))
+        px, py, L, eL, pivot_ok = _given_pivot(x, y, pivot)
     if py <= float(np.mean(y)):
         raise FitError("the path does not hang below a pivot")
     theta = np.arctan2(x - px, py - y)
@@ -87,5 +112,5 @@ def fit(track: Track, pivot: tuple[float, float] | None = None) -> FitResult:
         "damping": Param(gamma, egamma, "1/s"),
         "amplitude": Param(math.degrees(amp), math.degrees(eA), "°"),
     }
-    quality = "rough" if eL / L > MAX_LENGTH_ERROR else quality_of(rmse, track)
+    quality = "rough" if eL / L > MAX_LENGTH_ERROR or not pivot_ok else quality_of(rmse, track)
     return FitResult(MOTION, params, sim, rmse, quality, len(track))

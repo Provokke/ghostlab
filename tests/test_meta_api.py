@@ -27,3 +27,32 @@ def test_spark_json_sends_images_and_schema():
     assert parts[0] == {"type": "text", "text": "what is it?"}
     assert parts[2]["image_url"]["url"] == "data:image/jpeg;base64," + base64.b64encode(b"img2").decode()
     assert fmt["json_schema"]["name"] == "probe" and fmt["json_schema"]["schema"] == schema
+
+
+def test_client_has_timeouts_and_no_silent_retries(monkeypatch):
+    monkeypatch.setenv("MODEL_API_KEY", "k")
+    c = meta_api.client()
+    assert c.max_retries == 0
+    assert c.timeout.read == 120 and c.timeout.connect == 10
+
+
+def test_missing_key_is_a_runtime_error_not_systemexit(monkeypatch):
+    import pytest
+    monkeypatch.delenv("MODEL_API_KEY", raising=False)
+    with pytest.raises(meta_api.MissingKeyError):
+        meta_api.client()
+
+
+def test_long_calls_use_the_long_timeout(tmp_path):
+    seen = []
+
+    class Slow(FakeMeta):
+        def with_options(self, timeout):
+            seen.append(timeout)
+            return self
+
+    fake = Slow(sam_text="x")
+    clip = tmp_path / "c.mp4"
+    clip.write_bytes(b"v")
+    meta_api.sam_track(fake, meta_api.upload_video(fake, clip), "ball")
+    assert seen == [meta_api.LONG_TIMEOUT] * 2

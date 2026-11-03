@@ -1,5 +1,7 @@
 import re
 
+import httpx
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -98,11 +100,69 @@ def test_no_key_503(env, monkeypatch):
 
 def test_model_failure_is_502_and_cleans_up(env, monkeypatch):
     client, clip, make, web = env
-    make([])  # no chat replies: the identify call raises
+    make([IDENT])
+
+    def down(*a, **k):
+        raise httpx.ConnectError("down")
+    monkeypatch.setattr(server.pipeline, "identify_clip", down)
     r = upload(client, clip)
     assert r.status_code == 502
     assert "Try again" in r.json()["detail"]
     assert not list((web / "uploads").iterdir())
+
+
+def test_code_bug_is_a_500_not_a_busy_502_and_is_logged(env, monkeypatch, caplog):
+    client, clip, make, web = env
+    make([IDENT])
+    monkeypatch.setattr(server.pipeline, "identify_clip", lambda *a, **k: {}["missing"])
+    c = TestClient(server.app, raise_server_exceptions=False)
+    with caplog.at_level("ERROR", logger="ghostlab"):
+        with clip.open("rb") as f:
+            r = c.post("/api/identify", files={"file": ("throw.mp4", f, "video/mp4")})
+    assert r.status_code == 500
+    assert any("identify failed" in m for m in caplog.messages)
+    assert not list((web / "uploads").iterdir())
+
+
+def _identified(client, clip, make):
+    make([IDENT, EXPLAIN])
+    return upload(client, clip).json()["id"]
+
+
+def test_analyze_rejects_bad_motion_and_object(env):
+    client, clip, make, web = env
+    uid = _identified(client, clip, make)
+    for bad in ({"motion": "nope"}, {"object": ""}, {"object": "x" * 81}):
+        assert client.post("/api/analyze", json={"id": uid, **bad}).status_code == 422
+
+
+def test_motion_literal_matches_identify_motions():
+    from typing import get_args
+
+    from ghostlab import identify
+    inner = [a for a in get_args(server.AnalyzeRequest.model_fields["motion"].annotation) if a is not type(None)][0]
+    assert list(get_args(inner)) == identify.MOTIONS
+
+
+def test_analyze_expired_when_mp4_is_gone(env):
+    client, clip, make, web = env
+    uid = _identified(client, clip, make)
+    (web / "uploads" / f"{uid}.mp4").unlink()
+    r = client.post("/api/analyze", json={"id": uid})
+    assert r.status_code == 404 and "expired" in r.json()["detail"]
+
+
+def test_analyze_keeps_mp4_and_folder_alive(env):
+    import os
+    import time
+    client, clip, make, web = env
+    uid = _identified(client, clip, make)
+    stale = time.time() - 23 * 3600
+    for path in (web / "uploads" / uid, web / "uploads" / f"{uid}.mp4"):
+        os.utime(path, (stale, stale))
+    client.post("/api/analyze", json={"id": uid})
+    for path in (web / "uploads" / uid, web / "uploads" / f"{uid}.mp4"):
+        assert path.stat().st_mtime > stale + 3600
 
 
 def test_oversize_upload_413_and_cleans_up(env, monkeypatch):

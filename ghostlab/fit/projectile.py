@@ -17,6 +17,7 @@ def simulate(p: dict[str, float], t) -> tuple[np.ndarray, np.ndarray]:
 
 
 def fit(track: Track) -> FitResult:
+    track.validate()
     if len(track) < MIN_POINTS:
         raise FitError(f"need at least {MIN_POINTS} tracked frames, got {len(track)}")
     (vx, x0), cov_x = np.polyfit(track.t, track.x, 1, cov=True)

@@ -39,3 +39,18 @@ def test_result_carries_the_blind_prediction_model():
     r = check(tr, "projectile")
     x, y = pj.simulate(r["sim"], tr.t - r["t_origin"])
     assert np.nanmax(np.hypot(x - tr.x, y - tr.y)) < 0.05
+
+
+def test_reason_reports_the_actual_held_out_share():
+    r = check(make(seconds=1.0, sigma=0.2), "projectile", train_frac=0.9)
+    if r["verdict"] == "refused" and r["reason"] and "unseen" in r["reason"]:
+        assert "unseen 10%" in r["reason"]
+
+
+def test_non_finite_track_is_refused_not_crashed():
+    t = make(seconds=2.0)
+    x = t.x.copy()
+    x[3] = np.nan
+    for motion in ("pendulum", "ramp", "projectile", "bounce"):
+        r = check(Track(t=t.t, x=x, y=t.y, m_per_px=t.m_per_px), motion)
+        assert r["verdict"] == "refused"

@@ -1,6 +1,9 @@
 [project]
 name = "ghostlab"
 version = "0.1.0"
+description = "Phone-first physics instrument: tracks an object in a clip, fits a model, tests its own prediction, and certifies or refuses."
+readme = "README.md"
+license = { file = "LICENSE" }
 requires-python = ">=3.11"
 dependencies = [
     "numpy>=1.26",
@@ -13,6 +16,7 @@ dependencies = [
 
 [project.optional-dependencies]
 web = ["fastapi>=0.110", "uvicorn>=0.29", "python-multipart>=0.0.9"]
+ui = ["playwright>=1.44"]
 dev = ["pytest>=8", "ghostlab[web]"]
 
 [build-system]

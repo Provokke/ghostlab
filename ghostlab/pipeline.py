@@ -1,12 +1,13 @@
 """Clip in, result JSON out: ingest, identify, track, scale, fit, explain."""
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
 
 from ghostlab import explain, heldout, identify, ingest, meta_api, sam_parse, scale
-from ghostlab.cache import cached
+from ghostlab.cache import cached, key_of
 from ghostlab.core import FitError, FitResult
 from ghostlab.fit.select import better_alternative, fit_all
 
@@ -17,7 +18,12 @@ G_PLAUSIBLE = (0.7, 1.3)  # fitted g outside 70-130% of Earth's: wrong scale or 
 
 
 def speed_warning(chosen) -> str | None:
-    g = getattr(chosen, "params", {}).get("g")
+    params = getattr(chosen, "params", {})
+    mu = params.get("friction")
+    if mu is not None and not 0.0 <= mu.value <= 2.0:
+        return (f"Fitted friction is {mu.value:.2f}, outside what a real slope gives. The angle or size is probably "
+                "wrong, or the clip is not at normal speed.")
+    g = params.get("g")
     if g is None:
         return None
     lo, hi = G_PLAUSIBLE
@@ -34,13 +40,27 @@ class Overrides:
     motion: str | None = None
 
 
+def _file_digest(path: Path) -> str:
+    """SHA-256 of a file, streamed so a long clip is never held in memory."""
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        while chunk := f.read(1 << 20):
+            h.update(chunk)
+    return h.hexdigest()
+
+
 def identify_clip(c, clip: ingest.Clip, cache_root: Path | None = None) -> dict:
     """Muse Spark's guess at the object, its size and the motion; cached per clip."""
-    return cached("identify", identify.PROMPT_VERSION.encode() + b"".join(clip.key_frames),
+    return cached("identify", key_of(identify.PROMPT_VERSION, meta_api.SPARK, *clip.key_frames),
                   lambda: identify.identify(c, clip.key_frames), cache_root)
 
 
 def run(src: Path, work: Path, c, overrides: Overrides = Overrides(), cache_root: Path | None = None) -> dict:
+    """Full analysis of one clip.
+
+    Returns the result dict, or {"error", "identification", "warnings", "prompts_tried"} when SAM cannot
+    find the object under any prompt (callers turn that into a user-facing 422).
+    """
     clip = ingest.prepare(src, work)
     warnings = []
     camera_moved = clip.camera_shift > ingest.SHAKE_LIMIT
@@ -52,10 +72,11 @@ def run(src: Path, work: Path, c, overrides: Overrides = Overrides(), cache_root
     prompt = overrides.object or ident["sam_prompt"]
     size = overrides.size_m or ident["real_size_m"]
     motion = overrides.motion or ident["motion"]
-    video = clip.path.read_bytes()
+    video_digest = _file_digest(clip.path)
     file_id = None
 
-    def track_with(prompt: str):
+    def track_with(prompt: str) -> tuple:
+        """Track `prompt` with SAM (cached) and return (metric track, notes)."""
         nonlocal file_id
 
         def call():
@@ -63,12 +84,12 @@ def run(src: Path, work: Path, c, overrides: Overrides = Overrides(), cache_root
             file_id = file_id or meta_api.upload_video(c, clip.path)
             return {"text": meta_api.sam_track(c, file_id, prompt)}
 
-        sam = cached("sam", prompt.encode() + b"\0" + video, call, cache_root)
+        sam = cached("sam", key_of(meta_api.SAM, prompt, video_digest), call, cache_root)
         frames = sam_parse.parse(sam["text"])
         pixels = sam_parse.to_pixel_track(frames, clip.n_frames, clip.fps, clip.width, clip.height)
         return scale.to_metres(pixels, size)
 
-    tried, failure = [], None
+    tried, failure, notes = [], None, []
     for candidate in dict.fromkeys([prompt, *FALLBACK_PROMPTS]):
         try:
             track, notes = track_with(candidate)
@@ -82,6 +103,8 @@ def run(src: Path, work: Path, c, overrides: Overrides = Overrides(), cache_root
         return {"error": str(failure), "identification": ident, "warnings": warnings, "prompts_tried": tried}
     pivot = scale.pivot_to_metres(track, (ident["pivot_x_px"], ident["pivot_y_px"])) if ident["has_pivot"] else None
     results = fit_all(track, pivot)
+    if motion not in results:
+        raise ValueError(f"unknown motion {motion!r}")
     chosen = results[motion]
     # The model's motion guess is not a measurement: when it cannot fit the data at all and another
     # motion fits much better, use that one. The held-out check below still decides the verdict.
@@ -100,8 +123,9 @@ def run(src: Path, work: Path, c, overrides: Overrides = Overrides(), cache_root
             if twin["verdict"] == "certified":
                 twin = {**twin, "verdict": "refused",
                         "reason": f"g is {chosen.params['g'].value:.1f}, not about 9.8: size or playback speed likely wrong"}
-        key = explain.PROMPT_VERSION + ident["object"] + json.dumps(chosen.to_json(), sort_keys=True)
-        explanation = cached("explain", key.encode(), lambda: explain.explain(c, ident["object"], chosen), cache_root)
+        key = key_of(explain.PROMPT_VERSION, meta_api.SPARK, ident["object"], json.dumps(chosen.to_json(), sort_keys=True),
+                     twin["verdict"], str(twin.get("reason")))
+        explanation = cached("explain", key, lambda: explain.explain(c, ident["object"], chosen, twin["verdict"], twin.get("reason")), cache_root)
     return {
         "clip": {"fps": clip.fps, "n_frames": clip.n_frames, "width": clip.width, "height": clip.height},
         "identification": ident,

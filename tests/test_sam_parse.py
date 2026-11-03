@@ -30,7 +30,7 @@ def test_pixel_track_marks_missing_frames():
     assert track.t[3] == 1.5
 
 
-@pytest.mark.skipif(not Path("tests/fixtures/sam_real.txt").exists(), reason="needs real SAM output (Task 10)")
+@pytest.mark.skipif(not Path("tests/fixtures/sam_real.txt").exists(), reason="live-only: needs a real SAM output fixture at tests/fixtures/sam_real.txt")
 def test_real_fixture():
     text = Path("tests/fixtures/sam_real.txt").read_text(encoding="utf-8")
     frames = parse(text)
@@ -39,3 +39,19 @@ def test_real_fixture():
     assert oid is not None
     hits = sum(oid in objs for objs in frames.values())
     assert hits >= 0.8 * len(frames)
+
+
+def test_malformed_boxes_are_skipped_not_fatal():
+    text = ("<0f>0<|box;x1=1;y1=2;x2=3|>,1<|box;x1=a;y1=2;x2=3;y2=4|>,2<|box;x1=1;y1=2;x2=nan;y2=4|>,"
+            "3<|box;x1=5;y1=5;x2=9;y2=9;c=0.9|>\n<1f>3<|box;x1=6;y1=6;x2=10;y2=10|>\n")
+    frames = parse(text)
+    assert list(frames[0]) == [3] and frames[0][3].conf == 0.9
+    assert list(frames[1]) == [3]
+
+
+def test_all_boxes_bad_keeps_the_frame_empty():
+    assert parse("<0f>0<|box;x1=1|>\n") == {0: {}}
+
+
+def test_inverted_box_is_skipped():
+    assert parse("<0f>0<|box;x1=9;y1=9;x2=1;y2=1|>") == {0: {}}

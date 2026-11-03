@@ -1,6 +1,6 @@
 """Render synthetic demo clips and run the real pipeline over them with a stand-in Meta API.
 
-These are development placeholders. Real clips replace them once the Meta API key is available.
+These are deliberate synthetic sample clips with known physics (ball tagged 6.7 cm), not filmed footage.
 """
 import json
 import sys

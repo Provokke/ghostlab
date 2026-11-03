@@ -11,6 +11,8 @@ from ghostlab.core import FitError, FitResult, Param, Track, quality_of, rmse_of
 MOTION = "bounce"
 MIN_ARC_POINTS = 5
 MAX_BOUNCES = 50
+MIN_ERROR = 1e-9  # floor for an uncertainty used as a weight
+SHARED_ARC = math.sqrt(2.0)  # consecutive e ratios share an arc, so they are not independent: widen the bar
 
 
 def simulate(p: dict[str, float], t) -> tuple[np.ndarray, np.ndarray]:
@@ -61,11 +63,13 @@ def _meet(pa, pb, near: float, fallback: float) -> float:
 
 
 def _wmean(values, errors) -> tuple[float, float]:
-    w = 1.0 / np.square(errors)
+    """Inverse-variance weighted mean and its error; errors are floored so a perfect fit cannot give 1/0."""
+    w = 1.0 / np.square(np.maximum(errors, MIN_ERROR))
     return float(np.sum(w * np.asarray(values)) / np.sum(w)), float(math.sqrt(1.0 / np.sum(w)))
 
 
 def fit(track: Track) -> FitResult:
+    track.validate()
     t, y = track.t, track.y
     span = float(np.ptp(y))
     if len(track) < 2 * MIN_ARC_POINTS or span == 0:
@@ -89,6 +93,7 @@ def fit(track: Track) -> FitResult:
         ratios.append(e)
         ratio_errors.append(e * 0.5 * math.hypot(fa[3] / ha, fb[3] / hb))
     e, ee = _wmean(ratios, ratio_errors)
+    ee *= SHARED_ARC if len(ratios) > 1 else 1.0
     good = [f for f in fits if f]
     g, eg = _wmean([f[0] for f in good], [f[1] for f in good])
     first = next(k for k, f in enumerate(fits) if f)
@@ -104,6 +109,6 @@ def fit(track: Track) -> FitResult:
     params = {
         "e": Param(e, ee, ""),
         "g": Param(g, eg, "m/s²"),
-        "bounces": Param(float(len(pairs)), 0.0, ""),
+        "bounces": Param(float(len(lows)), 0.0, ""),
     }
     return FitResult(MOTION, params, sim, rmse, quality_of(rmse, track), len(track))

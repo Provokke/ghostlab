@@ -31,7 +31,7 @@ def check(track: Track, motion: str, pivot=None, train_frac: float = TRAIN_FRACT
     train = _slice(track, train_mask)
     try:
         fit = module.fit(train, pivot=pivot) if motion == "pendulum" else module.fit(train)
-    except FitError as exc:
+    except (FitError, np.linalg.LinAlgError) as exc:
         out["reason"] = str(exc)
         return out
     out.update(sim=fit.sim, t_origin=float(track.t[train_mask][0]))
@@ -46,5 +46,5 @@ def check(track: Track, motion: str, pivot=None, train_frac: float = TRAIN_FRACT
     if rmse <= CERTIFY_FRACTION * size:
         out["verdict"] = "certified"
     else:
-        out["reason"] = f"predicted the unseen {int((1 - train_frac) * 100)}% off by {rmse * 100:.1f} cm"
+        out["reason"] = f"predicted the unseen {round(100 * out["test_n"] / len(track))}% off by {rmse * 100:.1f} cm"
     return out

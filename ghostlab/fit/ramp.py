@@ -21,6 +21,7 @@ def simulate(p: dict[str, float], t) -> tuple[np.ndarray, np.ndarray]:
 
 
 def fit(track: Track) -> FitResult:
+    track.validate()
     if len(track) < MIN_POINTS:
         raise FitError(f"need at least {MIN_POINTS} tracked frames, got {len(track)}")
     pts = np.column_stack([track.x, track.y])
@@ -39,10 +40,17 @@ def fit(track: Track) -> FitResult:
     a, ea = 2 * float(half_a), 2 * math.sqrt(cov[0, 0])
     if a <= 0:
         raise FitError("the object is not speeding up downhill")
+    ev0 = math.sqrt(cov[1, 1])
+    v_mid, v_end = v0 + a * float(np.mean(track.t)), v0 + a * float(track.t[-1])
+    if v_mid <= 0 or v_end <= 0 or v0 < -2 * ev0:
+        raise FitError("the object is moving uphill, not sliding down")
     cos, sin = math.cos(angle), math.sin(angle)
     mu = math.tan(angle) - a / (G * cos)
     dmu_dangle = 1 / cos**2 - a * sin / (G * cos**2)
     emu = math.hypot(dmu_dangle * eangle, ea / (G * cos))
+    if mu < -2 * emu:
+        raise FitError("it speeds up faster than gravity allows on this slope: the angle or scale is off")
+    mu = max(mu, 0.0)  # tiny negatives are noise around a frictionless slide
     sim = {"xs": float(centre[0]), "ys": float(centre[1]), "dx": float(d[0]), "dy": float(d[1]),
            "s0": float(s0), "v0": float(v0), "a": a}
     rmse = rmse_of(track, *simulate(sim, track.t))
@@ -50,6 +58,6 @@ def fit(track: Track) -> FitResult:
         "angle": Param(math.degrees(angle), math.degrees(eangle), "°"),
         "acceleration": Param(a, ea, "m/s²"),
         "friction": Param(mu, emu, ""),
-        "start_speed": Param(float(v0), math.sqrt(cov[1, 1]), "m/s"),
+        "start_speed": Param(float(v0), ev0, "m/s"),
     }
     return FitResult(MOTION, params, sim, rmse, quality_of(rmse, track), len(track))

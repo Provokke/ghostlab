@@ -1,14 +1,16 @@
-"""Walk the phone UI in headless Edge at 390x844: all five screens, error paths, console errors, overflow, ghost ink,
+"""Walk the phone UI in headless Edge at 390x844, 430x932 and 1440x900 (screenshots in work/ui/): all five screens, error paths, console errors, overflow, ghost ink,
 touch-target height and export. Meta API calls are stubbed with canned JSON; nothing here spends credits.
 Run: .venv/Scripts/python scripts/ui_check.py   (exit 1 on any failed check)"""
-import json, subprocess, sys, time, urllib.request
+import json, os, subprocess, sys, time, urllib.request
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parent.parent
-PORT = 8791
+PORT = int(os.environ.get("GHOSTLAB_UI_PORT", "8791"))
 BASE = f"http://localhost:{PORT}/"
-SHOTS = ROOT / "work"
+SHOTS = ROOT / "work" / "ui"
+VIEWPORTS = [(390, 844), (430, 932), (1440, 900)]  # phone, large phone, desktop
+VIEW = ""
 DEMOS = ROOT / "web" / "demos"
 FILE = str(DEMOS / "bump.mp4")
 
@@ -43,13 +45,23 @@ def demo(name, live=False):
 
 
 def layout(page, name):
+    name = f"{name}{VIEW}"
     check(f"{name}: no horizontal overflow", page.evaluate("document.documentElement.scrollWidth - window.innerWidth") <= 0)
     small = page.evaluate(SMALL_JS)
     check(f"{name}: touch targets >= 44px", not small, str(small))
 
 
+DOC_SHOTS = {"capture", "analysing", "verdict", "verdict_refused", "playground"}  # filenames README.md uses
+EXPORT_DOCS = "--export-docs" in sys.argv
+
+
 def shot(page, name):
-    page.screenshot(path=str(SHOTS / f"ui_{name}.png"))
+    page.wait_for_timeout(900)  # let fade-in transitions finish before capturing
+    page.screenshot(path=str(SHOTS / f"ui_{name}{VIEW}.png"))
+    if EXPORT_DOCS and VIEW == "_390x844" and name in DOC_SHOTS:
+        out = ROOT / "docs" / "img"
+        out.mkdir(parents=True, exist_ok=True)
+        page.screenshot(path=str(out / f"{name}.png"))
 
 
 def freeze(page, t):
@@ -238,15 +250,20 @@ try:
             urllib.request.urlopen(f"http://localhost:{PORT}/api/status"); break
         except Exception:
             time.sleep(0.2)
-    SHOTS.mkdir(exist_ok=True)
+    SHOTS.mkdir(parents=True, exist_ok=True)
     with sync_playwright() as p:
         b = p.chromium.launch(channel="msedge", headless=True)
-        ctx = b.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=2, has_touch=True, is_mobile=True)
-        for scenario in (scenario_demo_and_verdict, scenario_upload_flow, scenario_errors, scenario_playground):
-            try:
-                scenario(ctx)
-            except Exception as e:  # a crashed scenario is a failure, not a skip
-                check(f"{scenario.__name__} crashed", False, repr(e)[:300])
+        for w, h in VIEWPORTS:
+            VIEW = f"_{w}x{h}"
+            desktop = w > 600
+            ctx = b.new_context(viewport={"width": w, "height": h}, device_scale_factor=1 if desktop else 2,
+                                has_touch=not desktop, is_mobile=not desktop)
+            for scenario in (scenario_demo_and_verdict, scenario_upload_flow, scenario_errors, scenario_playground):
+                try:
+                    scenario(ctx)
+                except Exception as e:  # a crashed scenario is a failure, not a skip
+                    check(f"{VIEW} {scenario.__name__} crashed", False, repr(e)[:300])
+            ctx.close()
         b.close()
 finally:
     srv.terminate()

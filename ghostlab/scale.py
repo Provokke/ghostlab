@@ -20,6 +20,8 @@ def _segments(present: np.ndarray) -> list[tuple[int, int]]:
 
 
 def to_metres(px: PixelTrack, real_size_m: float) -> tuple[Track, list[str]]:
+    if not np.isfinite(real_size_m) or real_size_m <= 0:
+        raise FitError("the object's real size must be above zero")
     present = ~np.isnan(px.cx)
     segments = _segments(present)
     if not segments:
@@ -32,7 +34,10 @@ def to_metres(px: PixelTrack, real_size_m: float) -> tuple[Track, list[str]]:
     t = px.t[sl]
     cx = np.interp(t, t[keep], px.cx[sl][keep])
     cy = np.interp(t, t[keep], px.cy[sl][keep])
-    m = real_size_m / float(np.nanmedian(np.maximum(px.w[sl], px.h[sl])))
+    size_px = float(np.nanmedian(np.maximum(px.w[sl], px.h[sl])))
+    if not np.isfinite(size_px) or size_px <= 0:
+        raise FitError("the object box has no size")
+    m = real_size_m / size_px
     notes = []
     if (filled := int((~keep).sum())):
         notes.append(f"filled {filled} missing frame(s)")

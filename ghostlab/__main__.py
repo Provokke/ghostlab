@@ -23,7 +23,10 @@ def main(argv=None) -> None:
     s.add_argument("truth", type=Path)
     s.add_argument("--out", type=Path, default=Path("docs/scoreboard.md"))
     args = ap.parse_args(argv)
-    c = meta_api.client()
+    try:
+        c = meta_api.client()
+    except meta_api.MissingKeyError as exc:
+        raise SystemExit(str(exc))
     if args.cmd == "run":
         overrides = pipeline.Overrides(args.object, args.size, args.motion)
         result = pipeline.run(args.clip, args.work, c, overrides)

@@ -32,7 +32,10 @@ def _normalise(src: Path, out: Path) -> None:
         "-t", str(MAX_SECONDS), "-vf", f"scale=-2:'min({MAX_HEIGHT},ih)'",
         "-fps_mode", "cfr", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-an", str(out),
     ]
-    subprocess.run(cmd, check=True)
+    try:
+        subprocess.run(cmd, check=True, timeout=120)
+    except subprocess.TimeoutExpired as e:
+        raise ValueError("the clip took too long to convert; try a shorter one") from e
 
 
 def _read_frames(path: Path) -> tuple[float, list[np.ndarray]]:
@@ -46,13 +49,6 @@ def _read_frames(path: Path) -> tuple[float, list[np.ndarray]]:
         frames.append(frame)
     cap.release()
     return fps, frames
-
-
-def _shift(a: np.ndarray, b: np.ndarray) -> float:
-    ga = np.float32(cv2.cvtColor(a, cv2.COLOR_BGR2GRAY))
-    gb = np.float32(cv2.cvtColor(b, cv2.COLOR_BGR2GRAY))
-    (dx, dy), _ = cv2.phaseCorrelate(ga, gb)
-    return float(np.hypot(dx, dy) / a.shape[1])
 
 
 MIN_FEATURES = 15  # fewer background corners than this and the drift cannot be measured
@@ -83,6 +79,8 @@ def prepare(src: Path, work: Path) -> Clip:
     out = work / "clip.mp4"
     _normalise(src, out)
     fps, frames = _read_frames(out)
+    if not np.isfinite(fps) or fps <= 0:
+        raise ValueError("could not read the frame rate")
     if len(frames) < 2:
         raise ValueError("the clip has fewer than two frames")
     n = len(frames)

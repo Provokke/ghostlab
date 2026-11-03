@@ -32,3 +32,12 @@ def test_moving_background_reads_as_shaky(tmp_path):
     src = tmp_path / "shaky.mp4"
     write_clip(src, shake_px=1)  # frames 6 and 54 differ by 48 px, 3.75% of the width
     assert prepare(src, tmp_path / "work").camera_shift > SHAKE_LIMIT
+
+
+def test_unreadable_frame_rate_is_an_error(tmp_path, monkeypatch):
+    import pytest
+    from ghostlab import ingest
+    monkeypatch.setattr(ingest, "_normalise", lambda src, out: None)
+    monkeypatch.setattr(ingest, "_read_frames", lambda p: (0.0, [np.zeros((10, 10, 3), np.uint8)] * 3))
+    with pytest.raises(ValueError, match="frame rate"):
+        ingest.prepare(tmp_path / "a.mp4", tmp_path / "w")

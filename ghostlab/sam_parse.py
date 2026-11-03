@@ -1,6 +1,7 @@
 """Parse SAM 3.1's special-token output (one line per frame) into a pixel track."""
 from __future__ import annotations
 
+import math
 import re
 from collections import Counter
 from dataclasses import dataclass
@@ -23,15 +24,30 @@ class Box:
     conf: float | None
 
 
+def _box(fields: str) -> Box | None:
+    """One box from its `key=value;...` fields, or None when it is malformed, non-finite or inverted."""
+    kv = dict(f.split("=", 1) for f in fields.split(";") if "=" in f)
+    try:
+        x1, y1, x2, y2 = (float(kv[k]) for k in ("x1", "y1", "x2", "y2"))
+        conf = float(kv["c"]) if "c" in kv else None
+    except (KeyError, ValueError):
+        return None
+    if not all(math.isfinite(v) for v in (x1, y1, x2, y2)) or (conf is not None and not math.isfinite(conf)):
+        return None
+    if x2 < x1 or y2 < y1:
+        return None
+    return Box(x1, y1, x2, y2, conf)
+
+
 def parse(text: str) -> dict[int, dict[int, Box]]:
+    """Frame number to {object id: box}. Malformed boxes are skipped; a frame with none left stays, empty."""
     parts = FRAME_TAG.split(MASK.sub("", text))
     frames: dict[int, dict[int, Box]] = {}
     for number, body in zip(parts[1::2], parts[2::2]):
         objects = {}
         for oid, fields in OBJECT.findall(body):
-            kv = dict(f.split("=", 1) for f in fields.split(";") if "=" in f)
-            objects[int(oid)] = Box(float(kv["x1"]), float(kv["y1"]), float(kv["x2"]), float(kv["y2"]),
-                                    float(kv["c"]) if "c" in kv else None)
+            if (box := _box(fields)) is not None:
+                objects[int(oid)] = box
         frames[int(number)] = objects
     return frames
 

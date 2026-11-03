@@ -35,6 +35,15 @@ class Track:
     def __len__(self) -> int:
         return len(self.t)
 
+    def validate(self) -> None:
+        """Raise FitError unless the track is finite, matching in length and strictly increasing in time."""
+        if not (len(self.t) == len(self.x) == len(self.y)):
+            raise FitError("the track arrays differ in length")
+        if not (np.isfinite(self.t).all() and np.isfinite(self.x).all() and np.isfinite(self.y).all()):
+            raise FitError("the track has missing or infinite positions")
+        if len(self.t) > 1 and not (np.diff(self.t) > 0).all():
+            raise FitError("the track times are not strictly increasing")
+
     def to_px(self, x: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         return self.origin_px[0] + x / self.m_per_px, self.origin_px[1] - y / self.m_per_px
 

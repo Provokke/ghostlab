@@ -44,3 +44,15 @@ def test_too_few_frames():
 def test_pivot_to_metres():
     track, _ = to_metres(pixel_track(), 0.05)
     assert pivot_to_metres(track, (200.0, 400.0)) == pytest.approx((0.1, 0.1))
+
+
+def test_zero_size_boxes_are_a_fit_error():
+    px = pixel_track()
+    flat = PixelTrack(t=px.t, cx=px.cx, cy=px.cy, w=np.zeros(20), h=np.zeros(20), frame_w=1280, frame_h=720)
+    with pytest.raises(FitError):
+        to_metres(flat, 0.1)
+
+
+def test_non_positive_real_size_is_a_fit_error():
+    with pytest.raises(FitError):
+        to_metres(pixel_track(), 0.0)

@@ -1,5 +1,5 @@
 // Record the replay (video frame + ghost overlay) to a clip in the browser: canvas.captureStream + MediaRecorder.
-const TYPES = ["video/mp4", "video/webm;codecs=vp9", "video/webm"];
+const TYPES = ["video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9", "video/webm"];
 
 export function exportClip(video, ghostCanvas, handle = {}) {
   return new Promise((resolve, reject) => {
@@ -7,16 +7,18 @@ export function exportClip(video, ghostCanvas, handle = {}) {
     if (typeof MediaRecorder === "undefined" || !off.captureStream) return reject(new Error("This browser cannot record the clip."));
     const type = TYPES.find((t) => MediaRecorder.isTypeSupported(t));
     if (!type) return reject(new Error("This browser cannot record the clip."));
-    off.width = video.videoWidth || ghostCanvas.width; off.height = video.videoHeight || ghostCanvas.height;
+    // Even dimensions: H.264 encoders reject odd sizes.
+    const even = (n) => Math.max(2, Math.round(n / 2) * 2);
+    off.width = even(video.videoWidth || ghostCanvas.width); off.height = even(video.videoHeight || ghostCanvas.height);
     const c = off.getContext("2d"), wasLoop = video.loop;
     const rec = new MediaRecorder(off.captureStream(30), { mimeType: type });
     const chunks = [];
     let raf = 0, done = false;
-    const paint = () => {
+    const draw = () => {
       c.drawImage(video, 0, 0, off.width, off.height);
       c.drawImage(ghostCanvas, 0, 0, off.width, off.height);
-      raf = requestAnimationFrame(paint);
     };
+    const paint = () => { draw(); raf = requestAnimationFrame(paint); };
     const finish = (err) => {
       if (done) return;
       done = true; cancelAnimationFrame(raf); video.loop = wasLoop; video.onended = null;
@@ -30,6 +32,6 @@ export function exportClip(video, ghostCanvas, handle = {}) {
     video.loop = false;
     video.onended = () => setTimeout(() => finish(), 150);
     video.currentTime = 0;
-    video.play().then(() => { rec.start(); paint(); }).catch((e) => finish(new Error(`Could not play the clip: ${e.message}`)));
+    video.play().then(() => { draw(); rec.start(); paint(); }).catch((e) => finish(new Error(`Could not play the clip: ${e.message}`)));
   });
 }
