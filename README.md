@@ -92,7 +92,7 @@ No real filmed clip has been certified; free real clips I tried were all refused
 ## What was built during the hackathon
 
 Everything in this repository was written during the building period (the design docs under
-`docs/superpowers/` were drafted on Oct 25 and contain no code; they are kept to show the process).
+first commit 2026-10-25).
 
 ## Accuracy (synthetic)
 

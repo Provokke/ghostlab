@@ -7,7 +7,6 @@ result.json
 srv.log
 work/
 web/uploads/
-.superpowers/
 .env
 .env.*
 *.pem

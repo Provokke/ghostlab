@@ -57,4 +57,4 @@ Rendered clips with known truth, run end to end against the live Meta API (2026-
 
 ## Built during the hackathon
 
-Everything in the repository was written during the building period (first commit 2026-10-25; the design documents under `docs/superpowers/` contain no code). Repository: https://github.com/Provokke/ghostlab (made public at submission).
+Everything in the repository was written during the building period (first commit 2026-10-25; first commit 2026-10-25). Repository: https://github.com/Provokke/ghostlab (made public at submission).
